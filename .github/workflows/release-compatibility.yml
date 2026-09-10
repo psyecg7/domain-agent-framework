@@ -1,0 +1,57 @@
+name: Release compatibility
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  clean-install:
+    name: Clean wheel install (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build distributable wheels
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip wheel --wheel-dir dist \
+            . ./agent-app ./agent-conformance ./agent-delta ./agent-enterprise \
+            ./agent-lancedb ./agent-ollama ./agent-openai ./agent-postgres \
+            ./agent-redpanda ./agent-scheduler
+      - name: Install wheels in a clean environment
+        run: |
+          python -m venv .release-venv
+          .release-venv/bin/python -m pip install --upgrade pip
+          .release-venv/bin/python -m pip install --find-links dist dist/*.whl
+      - name: Smoke-import every distributable package
+        run: |
+          .release-venv/bin/python -c 'import agent_core, agent_app, agent_conformance, agent_delta, agent_enterprise, agent_lancedb, agent_ollama, agent_openai, agent_postgres, agent_redpanda, agent_scheduler'
+
+  unit-and-conformance:
+    name: Unit and conformance (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies and local packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pip install -e . -e ./agent-app -e ./agent-conformance \
+            -e ./agent-delta -e ./agent-enterprise -e ./agent-lancedb \
+            -e ./agent-ollama -e ./agent-openai -e ./agent-postgres \
+            -e ./agent-redpanda -e ./agent-scheduler
+      - name: Run deterministic unit and conformance tests
+        run: python -m pytest -q

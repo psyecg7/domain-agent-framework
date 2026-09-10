@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-delta"
+version = "0.1.0"
+description = "Delta-backed persistent state adapter for the generic domain-agent runtime"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "domain-agent-framework" }]
+dependencies = [
+    "deltalake>=0.17.0",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+    "domain-agent-core>=0.1.0,<0.2.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

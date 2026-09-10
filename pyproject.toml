@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "domain-agent-core"
+version = "0.1.0"
+description = "Technology-independent core runtime for generic domain agents"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "domain-agent-framework" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+validation = ["jsonschema>=4.0"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src",
+    "agent-delta/src",
+    "agent-enterprise/src",
+    "agent-lancedb/src",
+    "agent-ollama/src",
+    "agent-redpanda/src",
+    "agent-scheduler/src",
+    "agent-openai/src",
+    "agent-postgres/src",
+    "agent-app/src",
+    "agent-conformance/src",
+]
+markers = [
+    "integration: requires an externally running broker or other infrastructure",
+]
