@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-11
 
-### Breaking changes planned for 0.2.0
+### Breaking changes
 
 - `CapabilityInvoker`, `Authorizer`, `EventTransport`, and related
   capability-invocation exceptions moved from the removed `agent_application`
