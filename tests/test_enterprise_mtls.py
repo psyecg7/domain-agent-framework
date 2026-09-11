@@ -24,11 +24,16 @@ def certificate_material(tmp_path, name: str, *, dns_name: str, uri: str | None 
     identities = [x509.DNSName(dns_name)]
     if uri is not None:
         identities.append(x509.UniformResourceIdentifier(uri))
+    # Include both key identifiers: Python 3.13/OpenSSL correctly rejects an
+    # otherwise plausible chain when a leaf cannot identify its issuing CA.
+    # These extensions also make this disposable test PKI match real CA output.
     cert = (
         x509.CertificateBuilder().subject_name(subject).issuer_name(issuer_name).public_key(key.public_key())
         .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(minutes=1))
         .not_valid_after(now + timedelta(hours=1)).add_extension(x509.SubjectAlternativeName(identities), critical=False)
         .add_extension(x509.BasicConstraints(ca=issuer is None, path_length=None), critical=True)
+        .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+        .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(signer.public_key()), critical=False)
         .sign(signer, hashes.SHA256())
     )
     cert_path, key_path = tmp_path / f"{name}.crt", tmp_path / f"{name}.key"
