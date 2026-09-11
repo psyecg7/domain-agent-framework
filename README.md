@@ -70,6 +70,10 @@ starts the optional Redpanda/PostgreSQL Compose profile when Docker and the
 required Python drivers are available; otherwise it reports that infrastructure
 validation was skipped. Set `VERIFY_INFRA=0` to run only deterministic checks.
 
+For package-index distribution, follow the [publishing guide](docs/publishing.md).
+The manual TestPyPI workflow uses GitHub OIDC trusted publishing and does not
+store a package-index token in this repository.
+
 For the production boundary—what is verified here, what requires domain or
 platform controls, and what is intentionally not claimed—read the
 [production safety case](docs/production-safety-case.md) before deploying a
