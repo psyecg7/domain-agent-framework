@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 import inspect
 
-from agent_application import CapabilityInvoker
+from agent_app import CapabilityInvoker
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
 
 

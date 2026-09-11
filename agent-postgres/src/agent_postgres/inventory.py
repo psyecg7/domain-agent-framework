@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, and_, create_engine, insert, select, update
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 
 class InventoryStorageUnavailable(RuntimeError):
@@ -57,6 +57,16 @@ class PostgresInventoryReservationAuthority:
             metadata.create_all(self.engine)
         except SQLAlchemyError as exc:
             raise InventoryStorageUnavailable("Inventory storage is unavailable") from exc
+
+    def _effect_outcome(self, operation_id: str) -> str | None:
+        try:
+            with self.engine.connect() as connection:
+                outcome = connection.execute(
+                    select(self.effects.c.outcome).where(self.effects.c.operation_id == operation_id)
+                ).scalar_one_or_none()
+        except SQLAlchemyError as exc:
+            raise InventoryStorageUnavailable("Inventory storage is unavailable") from exc
+        return str(outcome) if outcome is not None else None
 
     def seed(self, product_id: str, *, available: int, version: int = 1) -> None:
         self._validate_product(product_id)
@@ -121,6 +131,14 @@ class PostgresInventoryReservationAuthority:
                     return "SUCCEEDED"
                 connection.execute(insert(self.effects).values(operation_id=operation_id, product_id=product_id, outcome="CONFLICT"))
                 return "CONFLICT"
+        except IntegrityError as exc:
+            # A concurrent duplicate can lose the evidence-row insert after
+            # the winning transaction commits. Read that durable evidence;
+            # never misreport a safe duplicate as an infrastructure outage.
+            prior = self._effect_outcome(operation_id)
+            if prior is not None:
+                return "SUCCEEDED" if prior == "EXISTS" else prior
+            raise InventoryStorageUnavailable("Inventory reservation evidence could not be recovered") from exc
         except SQLAlchemyError as exc:
             raise InventoryStorageUnavailable("Inventory storage is unavailable") from exc
 

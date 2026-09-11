@@ -3,6 +3,7 @@ from .mapper import RedpandaEventMapper
 from .producer import RedpandaProducer
 from .runtime import RedpandaAgentRuntime
 from .transport import RedpandaEventDispatcher, RedpandaEventTransport
+from .observability import RedpandaDispatchEvent
 
 __all__ = [
     "RedpandaConsumer",
@@ -11,4 +12,5 @@ __all__ = [
     "RedpandaEventDispatcher",
     "RedpandaEventTransport",
     "RedpandaAgentRuntime",
+    "RedpandaDispatchEvent",
 ]

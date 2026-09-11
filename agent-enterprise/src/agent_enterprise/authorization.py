@@ -130,6 +130,13 @@ class ReplayStore(Protocol):
         ...
 
 
+class RevocationStore(Protocol):
+    """Decision-level authorization withdrawal checked immediately before use."""
+
+    def is_revoked(self, decision_id: str, *, now: int) -> bool:
+        ...
+
+
 class CommandEffectExecutor(Protocol):
     def __call__(self, command: ExecutionCommand) -> Any:
         ...
@@ -159,6 +166,34 @@ class InMemoryReplayStore:
                 return False
             self._claims[authorization_id] = expires_at
             return True
+
+
+class InMemoryRevocationStore:
+    """Thread-safe reference revocation set for one Executor process.
+
+    Production replicas require one shared, durable implementation. A revoked
+    decision remains revoked until its original authorization expiry, after
+    which expiry itself rejects the command.
+    """
+
+    def __init__(self) -> None:
+        self._revocations: dict[str, int] = {}
+        self._lock = threading.Lock()
+
+    def revoke(self, decision_id: str, *, expires_at: int) -> None:
+        if not isinstance(decision_id, str) or not decision_id.strip():
+            raise ValueError("decision_id must be a non-empty string")
+        if not isinstance(expires_at, int):
+            raise TypeError("expires_at must be an integer epoch timestamp")
+        with self._lock:
+            self._revocations[decision_id] = expires_at
+
+    def is_revoked(self, decision_id: str, *, now: int) -> bool:
+        with self._lock:
+            self._revocations = {
+                key: expiry for key, expiry in self._revocations.items() if expiry >= now
+            }
+            return decision_id in self._revocations
 
 
 class PolicyAuthorizationIssuer:
@@ -226,24 +261,35 @@ class PolicyAuthorizationIssuer:
 class ExecutorAuthorizationVerifier:
     """Executor-side fail-closed verifier with no access to Policy private keys."""
 
-    def __init__(self, public_keys: Mapping[str, Ed25519PublicKey], *, audience: str, replay_store: ReplayStore) -> None:
+    def __init__(self, public_keys: Mapping[str, Ed25519PublicKey], *, audience: str, replay_store: ReplayStore, revocation_store: RevocationStore | None = None, clock_skew_seconds: int = 5) -> None:
         if not audience:
             raise ValueError("audience must be non-empty")
         self._public_keys = dict(public_keys)
         self.audience = audience
         self.replay_store = replay_store
+        self.revocation_store = revocation_store
+        if not isinstance(clock_skew_seconds, int) or not 0 <= clock_skew_seconds <= 60:
+            raise ValueError("clock_skew_seconds must be an integer from 0 to 60")
+        self.clock_skew_seconds = clock_skew_seconds
 
     @classmethod
-    def from_pem(cls, public_keys: Mapping[str, bytes], *, audience: str, replay_store: ReplayStore) -> "ExecutorAuthorizationVerifier":
+    def from_pem(cls, public_keys: Mapping[str, bytes], *, audience: str, replay_store: ReplayStore, revocation_store: RevocationStore | None = None, clock_skew_seconds: int = 5) -> "ExecutorAuthorizationVerifier":
         parsed: dict[str, Ed25519PublicKey] = {}
         for key_id, pem in public_keys.items():
             key = serialization.load_pem_public_key(pem)
             if not isinstance(key, Ed25519PublicKey):
                 raise ValueError(f"Key {key_id!r} is not Ed25519")
             parsed[key_id] = key
-        return cls(parsed, audience=audience, replay_store=replay_store)
+        return cls(parsed, audience=audience, replay_store=replay_store, revocation_store=revocation_store, clock_skew_seconds=clock_skew_seconds)
 
-    def verify(self, command: ExecutionCommand, authorization: SignedAuthorization, *, now: int | None = None) -> None:
+    def verify(
+        self,
+        command: ExecutionCommand,
+        authorization: SignedAuthorization,
+        *,
+        now: int | None = None,
+        owned_action_types: frozenset[str] | None = None,
+    ) -> None:
         claims = authorization.claims
         key_id = claims.get("key_id")
         if not isinstance(key_id, str) or key_id not in self._public_keys:
@@ -258,10 +304,20 @@ class ExecutorAuthorizationVerifier:
             raise AuthorizationError("Authorization is not intended for this Executor")
         expires_at = claims.get("expires_at")
         issued_at = claims.get("issued_at")
-        if not isinstance(expires_at, int) or not isinstance(issued_at, int) or issued_at > current_time or expires_at <= current_time:
+        if not isinstance(expires_at, int) or not isinstance(issued_at, int) or issued_at > current_time + self.clock_skew_seconds or expires_at <= current_time - self.clock_skew_seconds:
             raise AuthorizationError("Authorization is expired or has an invalid time window")
         if any(claims.get(key) != value for key, value in command.binding().items()):
             raise AuthorizationError("Authorization does not bind this execution command")
+        decision_id = claims.get("decision_id")
+        if not isinstance(decision_id, str) or not decision_id:
+            raise AuthorizationError("Authorization has no decision identity")
+        if self.revocation_store is not None and self.revocation_store.is_revoked(decision_id, now=current_time):
+            raise AuthorizationError("Authorization decision has been revoked")
+        if owned_action_types is not None and command.action_type not in owned_action_types:
+            # This check must precede replay claiming.  A command delivered to
+            # the wrong executor must not consume a valid authorization and
+            # thereby deny the executor that actually owns the capability.
+            raise AuthorizationError(f"Executor does not own action type {command.action_type!r}")
         authorization_id = claims.get("authorization_id")
         if not isinstance(authorization_id, str) or not authorization_id:
             raise AuthorizationError("Authorization has no replay identity")
@@ -272,10 +328,11 @@ class ExecutorAuthorizationVerifier:
 class AuthorizedCommandExecutor:
     """The Executor-side gate: verify first, then permit one side effect."""
 
-    def __init__(self, verifier: ExecutorAuthorizationVerifier, execute_effect: CommandEffectExecutor) -> None:
+    def __init__(self, verifier: ExecutorAuthorizationVerifier, execute_effect: CommandEffectExecutor, *, owned_action_types: set[str] | None = None) -> None:
         self.verifier = verifier
         self.execute_effect = execute_effect
+        self.owned_action_types = frozenset(owned_action_types) if owned_action_types is not None else None
 
     def execute(self, command: ExecutionCommand, authorization: SignedAuthorization) -> Any:
-        self.verifier.verify(command, authorization)
+        self.verifier.verify(command, authorization, owned_action_types=self.owned_action_types)
         return self.execute_effect(command)

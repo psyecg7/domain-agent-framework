@@ -49,9 +49,27 @@ Use the lower-level `Agent(...)` constructor only when you need one of these:
 | Ask an AI for non-authoritative advice | a `Reasoner`; policy still decides |
 | Ask another domain for a fact | capabilities and ordinary result events |
 | Protect high-risk cross-service effects | `agent-enterprise` Policy/Executor authorization |
+| Safely coordinate several database workers | `agent-postgres` atomic operation/outbox support |
+| Call a payment, device, or third-party API | the [external side-effect boundary](external-effect-boundary.md) |
 
 The quickstart API is intentionally local and in-memory. It is not a hidden
 production mode and does not change the framework's authority boundary.
+
+## Verify a checkout
+
+From the repository root, run:
+
+```bash
+bash scripts/verify_framework.sh
+```
+
+This runs deterministic unit and conformance checks, then—when Docker Compose,
+`confluent-kafka`, and `psycopg` are available—starts the local
+Redpanda/PostgreSQL profile and runs its real integration proofs. It reports a
+clear `SKIPPED` result when that optional infrastructure cannot run. Use
+`VERIFY_INFRA=0 bash scripts/verify_framework.sh` for the deterministic tier
+only, or `KEEP_INFRA_STACK=1` to leave a stack the script started running for
+local inspection.
 
 ## Partial failure
 
@@ -80,3 +98,19 @@ operation ID. Inventory answers from its own durable evidence using
 `test_pharmacy_release_reconciliation.py` conformance tests prove the mapping:
 only `EXISTS` confirms recovery; every other outcome remains an explicit Order
 recovery decision or escalation.
+
+## Multi-worker and external effects
+
+For a PostgreSQL-backed domain with several workers, use
+`PostgresAtomicOperationStore` to commit the domain mutation, stable operation
+claim, outcome, and outbound outbox record in one transaction. The publisher
+still runs after commit, so consumers must tolerate redelivery of the stable
+event identity. Run its real PostgreSQL race test before claiming multi-worker
+safety in a deployment.
+
+For a payment provider, device, or third-party API, no database transaction can
+make the provider call atomic. Use one stable operation ID as the provider's
+idempotency key. A lost response after possible acceptance is `UNKNOWN`, not a
+failure or success; reconcile through the provider before retrying, recovering,
+or escalating. See the [external side-effect boundary](external-effect-boundary.md)
+and adopt its `agent-conformance` checks.

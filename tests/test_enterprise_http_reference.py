@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from http.client import HTTPConnection
 import threading
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -11,6 +12,7 @@ from agent_enterprise import (
     AuthorizedCommandExecutor, DeltaReplayStore, ExecutorAuthorizationVerifier,
     DeltaAuthorizationAuditStore, PolicyAuthorizationIssuer, executor_server, policy_server,
 )
+from agent_enterprise.http_reference import RequestTooLarge, _content_length
 
 
 def post(server, payload: dict, headers: dict[str, str] | None = None) -> tuple[int, dict]:
@@ -82,3 +84,45 @@ def test_policy_and_executor_http_boundary_with_delta_replay(tmp_path) -> None:
     finally:
         policy.shutdown(); policy.server_close()
         executor.shutdown(); executor.server_close()
+
+
+def test_policy_rejects_oversized_body_before_reading_it() -> None:
+    try:
+        policy = policy_server(
+            PolicyAuthorizationIssuer.generate(key_id="policy-key", issuer="order-policy"),
+            audience="order-executor", development_bearer_token="dev-token", max_request_bytes=32,
+        )
+    except PermissionError:
+        pytest.skip("environment forbids loopback HTTP listener binding")
+    running(policy)
+    try:
+        connection = HTTPConnection("127.0.0.1", policy.server_port, timeout=5)
+        # No body is sent: the server must reject the declared size before it
+        # attempts a potentially blocking read from the client connection.
+        connection.putrequest("POST", "/")
+        connection.putheader("Content-Type", "application/json")
+        connection.putheader("Content-Length", "33")
+        connection.endheaders()
+        response = connection.getresponse()
+        assert response.status == 413
+        assert json.loads(response.read()) == {"error": "request body exceeds 32 byte limit"}
+    finally:
+        policy.shutdown(); policy.server_close()
+
+
+def test_request_limit_rejects_invalid_and_oversized_content_lengths() -> None:
+    assert _content_length("32", 32) == 32
+    with pytest.raises(RequestTooLarge):
+        _content_length("33", 32)
+    with pytest.raises(ValueError):
+        _content_length(None, 32)
+    with pytest.raises(ValueError):
+        _content_length("not-a-number", 32)
+
+
+def test_server_rejects_an_invalid_request_limit_before_binding_a_port() -> None:
+    with pytest.raises(ValueError, match="max_request_bytes"):
+        policy_server(
+            PolicyAuthorizationIssuer.generate(key_id="policy-key", issuer="order-policy"),
+            audience="order-executor", max_request_bytes=0,
+        )

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-ollama"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ollama reasoning adapter for the generic domain-agent runtime"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "domain-agent-framework" }]
 dependencies = [
-    "domain-agent-core>=0.1.0,<0.2.0",
+    "domain-agent-core>=0.2.0,<0.3.0",
 ]
 
 [tool.setuptools]

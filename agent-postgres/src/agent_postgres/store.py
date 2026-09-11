@@ -1,19 +1,28 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 import json
+from collections.abc import Iterator
 from datetime import datetime
 
 try:
     from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, and_, create_engine, insert, select, update
-    from sqlalchemy.engine import Engine
+    from sqlalchemy.engine import Connection, Engine
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 except ImportError:  # pragma: no cover - dependency boundary
     Engine = object  # type: ignore[assignment,misc]
+    Connection = object  # type: ignore[assignment,misc]
 
 from agent_core import State
 
 
 class ConcurrentStateUpdate(RuntimeError):
     """The stored version changed before this state could be persisted."""
+
+
+class StateStoreUnavailable(RuntimeError):
+    """PostgreSQL state storage could not be reached or committed."""
 
 
 class PostgresStateStore:
@@ -25,6 +34,9 @@ class PostgresStateStore:
         except NameError as exc:  # pragma: no cover - dependency boundary
             raise RuntimeError("sqlalchemy is required for PostgresStateStore") from exc
         self.engine: Engine = engine
+        self._active_connection: ContextVar[Connection | None] = ContextVar(
+            f"postgres_state_store_connection_{id(self)}", default=None,
+        )
         metadata = MetaData()
         self.table = Table(
             table_name,
@@ -35,14 +47,24 @@ class PostgresStateStore:
             Column("version", Integer, nullable=False),
             Column("updated_at", DateTime(timezone=True), nullable=False),
         )
-        metadata.create_all(self.engine)
+        try:
+            metadata.create_all(self.engine)
+        except SQLAlchemyError as exc:
+            raise StateStoreUnavailable("PostgreSQL state storage is unavailable") from exc
 
     def get(self, entity_id: str, entity_type: str) -> State | None:
         statement = select(self.table).where(
             and_(self.table.c.entity_id == entity_id, self.table.c.entity_type == entity_type)
         )
-        with self.engine.connect() as connection:
-            row = connection.execute(statement).mappings().first()
+        try:
+            connection = self._active_connection.get()
+            if connection is None:
+                with self.engine.connect() as read_connection:
+                    row = read_connection.execute(statement).mappings().first()
+            else:
+                row = connection.execute(statement).mappings().first()
+        except SQLAlchemyError as exc:
+            raise StateStoreUnavailable("PostgreSQL state storage is unavailable") from exc
         if row is None:
             return None
         return State(
@@ -61,25 +83,60 @@ class PostgresStateStore:
             "version": state.version,
             "updated_at": state.updated_at,
         }
-        with self.engine.begin() as connection:
-            if state.version == 0:
-                try:
-                    connection.execute(insert(self.table).values(**values))
-                    return
-                except Exception as exc:
-                    raise ConcurrentStateUpdate("State already exists") from exc
-            result = connection.execute(
-                update(self.table)
-                .where(
-                    and_(
-                        self.table.c.entity_id == state.entity_id,
-                        self.table.c.entity_type == state.entity_type,
-                        self.table.c.version == state.version - 1,
-                    )
+        try:
+            connection = self._active_connection.get()
+            if connection is None:
+                with self.engine.begin() as write_connection:
+                    self._save_on_connection(write_connection, state, values)
+            else:
+                self._save_on_connection(connection, state, values)
+        except IntegrityError as exc:
+            if state.version in (0, 1):
+                raise ConcurrentStateUpdate("State already exists") from exc
+            raise StateStoreUnavailable("PostgreSQL state storage rejected an unexpected write") from exc
+        except SQLAlchemyError as exc:
+            raise StateStoreUnavailable("PostgreSQL state storage is unavailable") from exc
+
+    @contextmanager
+    def use_connection(self, connection: Connection) -> Iterator[None]:
+        """Use a caller-owned transaction for this adapter's get/save calls.
+
+        This is adapter composition support, not part of the generic
+        ``StateStore`` port. It lets a PostgreSQL receipt runner make an Agent
+        state update and an inbound-event receipt one database transaction.
+        """
+        if not isinstance(connection, Connection):
+            raise TypeError("connection must be a SQLAlchemy Connection")
+        token = self._active_connection.set(connection)
+        try:
+            yield
+        finally:
+            self._active_connection.reset(token)
+
+    def _save_on_connection(self, connection: Connection, state: State, values: dict[str, object]) -> None:
+        if state.version == 0:
+            connection.execute(insert(self.table).values(**values))
+            return
+        result = connection.execute(
+            update(self.table)
+            .where(
+                and_(
+                    self.table.c.entity_id == state.entity_id,
+                    self.table.c.entity_type == state.entity_type,
+                    self.table.c.version == state.version - 1,
                 )
-                .values(**values)
             )
-            if result.rowcount != 1:
-                raise ConcurrentStateUpdate(
-                    f"Expected version {state.version - 1} for {state.entity_type}/{state.entity_id}"
-                )
+            .values(**values)
+        )
+        if result.rowcount == 1:
+            return
+        if state.version == 1:
+            # A fresh Agent starts at version zero, applies its first
+            # observation, then persists version one. Claim that first row by
+            # primary key so concurrent first observations still have one
+            # winner rather than silently overwriting each other.
+            connection.execute(insert(self.table).values(**values))
+            return
+        raise ConcurrentStateUpdate(
+            f"Expected version {state.version - 1} for {state.entity_type}/{state.entity_id}"
+        )

@@ -94,10 +94,12 @@ target, so migration did not alter field values or behavior.
   key; it still requires separate deployment, durable shared replay storage,
   enterprise OIDC/JWT ingress authorization, service mTLS, and KMS/HSM key
   management to be a production control. These are explicit deployment TODOs,
-  not capabilities claimed by the local development reference. Production also
-  requires atomic/shared replay protection or one serialized Executor writer,
-  plus a staging deployment that reruns the authorization, audit, recovery,
-  and consumer-handoff checks.
+  not capabilities claimed by the local development reference. The Enterprise
+  adapter now offers PostgreSQL-backed atomic replay claims and revocation
+  records for multi-replica Executors, but deployment still owns service
+  identity, key custody, and a tested revocation-propagation SLO. A staging
+  deployment must rerun authorization, audit, recovery, and consumer-handoff
+  checks.
 
 ## Business-state TOCTOU boundary
 

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from agent_application import CapabilityInvoker
+from agent_app import CapabilityInvoker
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
 from test_pharmacy_process_semantics import (
     ProcessStore,

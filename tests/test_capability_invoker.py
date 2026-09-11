@@ -6,10 +6,11 @@ import inspect
 
 import pytest
 
-from agent_application import (
+from agent_app import (
     AmbiguousCapabilityError,
     AuthorizationError,
     CapabilityInvoker,
+    ConversationalGateway,
     UnknownCapabilityError,
 )
 from agent_core import (
@@ -22,8 +23,6 @@ from agent_core import (
     Intent,
     State,
 )
-from agent_core.runtime.conversation import ConversationalGateway
-
 
 class InMemoryEventTransport:
     def __init__(self) -> None:

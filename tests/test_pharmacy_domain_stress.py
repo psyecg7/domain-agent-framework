@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Any, Callable
 import inspect
 
-from agent_application import CapabilityInvoker
+from agent_app import CapabilityInvoker
 from agent_core import Action, Agent, Capability, Decision, Event, InMemoryCapabilityRegistry, Intent, State, decision_to_action
 
 

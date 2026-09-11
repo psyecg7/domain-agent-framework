@@ -34,7 +34,7 @@ class RedpandaAgentRuntime:
         self.dead_letter_topic = dead_letter_topic
         self.max_retries = max_retries
 
-    def process_record(self, record: dict[str, Any]) -> AgentResult:
+    def process_record(self, record: dict[str, Any]) -> AgentResult | None:
         try:
             event = self.mapper.from_record(record)
             result = self.agent.process(event)
@@ -42,20 +42,29 @@ class RedpandaAgentRuntime:
                 self._publish_result(result)
             return result
         except (TypeError, ValueError) as exc:
-            self._route_failure(record, exc, terminal=True)
+            # A terminal record is safe to acknowledge only after the DLQ
+            # producer accepted it. Returning None gives the consumer loop an
+            # explicit acknowledgement signal instead of an infinite crash /
+            # redelivery / duplicate-DLQ cycle.
+            if self._route_failure(record, exc, terminal=True):
+                return None
             raise
         except Exception as exc:
             self._route_failure(record, exc, terminal=False)
             raise
 
-    def _route_failure(self, record: dict[str, Any], error: Exception, *, terminal: bool) -> None:
+    def route_terminal_failure(self, record: dict[str, Any], error: Exception) -> bool:
+        """Route a malformed transport record and report whether it is safe to commit."""
+        return self._route_failure(record, error, terminal=True)
+
+    def _route_failure(self, record: dict[str, Any], error: Exception, *, terminal: bool) -> bool:
         if self.producer is None:
-            return
+            return False
         transport = record.get("_transport", {}) if isinstance(record, dict) else {}
         retry_count = int(transport.get("retry_count", 0)) if isinstance(transport, dict) else 0
         topic = self.dead_letter_topic if terminal or retry_count >= self.max_retries else self.retry_topic
         if not topic:
-            return
+            return False
         key = transport.get("key") if isinstance(transport, dict) else None
         source = {
             "topic": transport.get("topic") if isinstance(transport, dict) else None,
@@ -71,6 +80,7 @@ class RedpandaAgentRuntime:
             "source": source,
         }
         self.producer.publish(topic=topic, key=key, value=value)
+        return True
 
     def _publish_result(self, result: AgentResult) -> None:
         if self.action_factory is not None:

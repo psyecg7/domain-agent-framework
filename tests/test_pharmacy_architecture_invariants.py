@@ -5,7 +5,7 @@ import inspect
 
 import pytest
 
-from agent_application import AmbiguousCapabilityError, CapabilityInvoker, UnknownCapabilityError
+from agent_app import AmbiguousCapabilityError, CapabilityInvoker, UnknownCapabilityError
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
 from test_operation_execution_contract import (
     ExecutionLedger,

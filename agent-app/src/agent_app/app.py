@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import datetime
+import logging
+from threading import Lock
+from time import perf_counter
 from agent_core import (
     Action,
     Agent,
@@ -13,6 +17,10 @@ from agent_core import (
     State,
 )
 from ._local import FunctionActionExecutor, FunctionPolicyEngine, InMemoryStateStore
+from .observability import AgentHealth, AgentLifecycleEvent, now
+
+
+logger = logging.getLogger(__name__)
 
 
 class AppConfigurationError(ValueError):
@@ -43,6 +51,7 @@ class DecisionSpec:
 
 PolicyHandler = Callable[[State], DecisionSpec | Decision | Iterable[DecisionSpec | Decision] | None]
 ActionHandler = Callable[[Action], None]
+LifecycleObserver = Callable[[AgentLifecycleEvent], None]
 
 
 class AgentApp:
@@ -54,10 +63,37 @@ class AgentApp:
     packages when an application actually needs them.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, observers: Iterable[LifecycleObserver] = ()) -> None:
         self._policies: dict[str, PolicyHandler] = {}
         self._actions: dict[str, ActionHandler] = {}
+        self._observers = list(observers)
+        if not all(callable(observer) for observer in self._observers):
+            raise TypeError("observers must be callable")
         self.state_store = InMemoryStateStore()
+        self._lock = Lock()
+        self._processed_events = 0
+        self._succeeded_events = 0
+        self._failed_events = 0
+
+    def observe(self, observer: LifecycleObserver) -> LifecycleObserver:
+        """Register a best-effort, payload-free lifecycle observer."""
+        if not callable(observer):
+            raise TypeError("observer must be callable")
+        with self._lock:
+            self._observers.append(observer)
+        return observer
+
+    def health(self) -> AgentHealth:
+        """Return local counters without performing I/O or policy evaluation."""
+        with self._lock:
+            return AgentHealth(
+                status="degraded" if self._failed_events else "ok",
+                processed_events=self._processed_events,
+                succeeded_events=self._succeeded_events,
+                failed_events=self._failed_events,
+                registered_policies=len(self._policies),
+                registered_actions=len(self._actions),
+            )
 
     def policy(self, event_type: str) -> Callable[[PolicyHandler], PolicyHandler]:
         """Register the deterministic policy for one incoming event type."""
@@ -94,15 +130,34 @@ class AgentApp:
 
     def process(self, event: Event) -> AgentResult:
         """Apply an Event using its registered policy and local action handlers."""
+        started_at = perf_counter()
+        self._emit("started", event, occurred_at=now())
         handler = self._policies.get(event.event_type)
-        if handler is None:
-            raise AppConfigurationError(f"No policy is registered for event type {event.event_type!r}")
-        agent = Agent(
-            self.state_store,
-            FunctionPolicyEngine(lambda state: self._materialize(handler(state), state)),
-            action_executor=FunctionActionExecutor(self._execute),
+        try:
+            if handler is None:
+                raise AppConfigurationError(f"No policy is registered for event type {event.event_type!r}")
+            agent = Agent(
+                self.state_store,
+                FunctionPolicyEngine(lambda state: self._materialize(handler(state), state)),
+                action_executor=FunctionActionExecutor(self._execute),
+            )
+            result = agent.process(event)
+        except Exception as exc:
+            duration_ms = (perf_counter() - started_at) * 1_000
+            with self._lock:
+                self._processed_events += 1
+                self._failed_events += 1
+            self._emit("failed", event, occurred_at=now(), duration_ms=duration_ms, error_type=type(exc).__name__)
+            raise
+        duration_ms = (perf_counter() - started_at) * 1_000
+        with self._lock:
+            self._processed_events += 1
+            self._succeeded_events += 1
+        self._emit(
+            "succeeded", event, occurred_at=now(), duration_ms=duration_ms,
+            decision_count=len(result.decisions), action_count=len(result.actions),
         )
-        return agent.process(event)
+        return result
 
     run_local = process
 
@@ -111,6 +166,35 @@ class AgentApp:
         if handler is None:
             raise AppConfigurationError(f"No action handler is registered for {action.action_type!r}")
         handler(action)
+
+    def _emit(
+        self,
+        phase: str,
+        event: Event,
+        *,
+        occurred_at: datetime,
+        duration_ms: float | None = None,
+        decision_count: int | None = None,
+        action_count: int | None = None,
+        error_type: str | None = None,
+    ) -> None:
+        lifecycle = AgentLifecycleEvent(
+            phase=phase, occurred_at=occurred_at, event_id=event.event_id,
+            event_type=event.event_type, entity_id=event.entity_id, entity_type=event.entity_type,
+            duration_ms=duration_ms, decision_count=decision_count, action_count=action_count, error_type=error_type,
+        )
+        logger.info(
+            "agent_app.lifecycle.%s", phase,
+            extra={"agent_lifecycle": lifecycle.__dict__},
+        )
+        with self._lock:
+            observers = tuple(self._observers)
+        for observer in observers:
+            try:
+                observer(lifecycle)
+            except Exception:
+                # Telemetry must never alter the policy/action outcome.
+                logger.exception("agent_app.lifecycle_observer_failed")
 
     @staticmethod
     def _materialize(value: DecisionSpec | Decision | Iterable[DecisionSpec | Decision] | None, state: State) -> list[Decision]:

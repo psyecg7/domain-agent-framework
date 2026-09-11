@@ -13,6 +13,12 @@ It currently supplies callable assertion templates for these invariants:
 - reconciliation answers use `EXISTS`, `ABSENT`, `CONFLICT`, or
   `STILL_UNKNOWN`;
 - a pre-acceptance publish failure leaves an application-owned outbox pending;
+- duplicate operations create one stable outbox message;
+- a failed co-located database operation rolls back both domain state and its
+  outbox record;
+- external retries preserve one provider idempotency key;
+- ambiguous external transport failures remain `UNKNOWN`; and
+- external reconciliation, rather than retry guessing, resolves `UNKNOWN`;
 - duplicate delivery does not change observed application state;
 - correlation and causation identifiers survive a produced-message boundary;
 - domain preconditions arrive at the effect handler unchanged; and
@@ -60,6 +66,15 @@ test module:
 - [ ] precondition forwarding and stale-`CONFLICT` check, when the effect has
       mutable business state;
 - [ ] outbox/publish-failure check, when the domain publishes follow-up work;
+- [ ] atomic database rollback and duplicate-outbox checks, when multiple
+      workers process that domain's operations;
+- [ ] a transactional receipt claim and duplicate-delivery check, when a
+      broker handler mutates co-located PostgreSQL state;
+- [ ] for a raw Agent broker consumer, use a state-only transactional receipt
+      runner or prove a domain-specific equivalent; never treat the Agent's
+      action executor as part of that receipt transaction;
+- [ ] external-effect idempotency, `UNKNOWN`, and reconciliation checks for
+      each provider capable of changing business state;
 - [ ] domain-owned recovery and escalation assertions.
 
 The CI workflow cannot infer whether an arbitrary package has side effects.
@@ -100,6 +115,12 @@ The supplied checks cover only facts that remain generic across domains:
   `STILL_UNKNOWN`;
 - a pre-acceptance publish failure remains `PENDING` in the application-owned
   outbox;
+- duplicate operations create one stable outbox message;
+- a failed co-located database operation leaves neither state nor an outbox
+  record;
+- external retries preserve one provider idempotency key;
+- ambiguous external transport failures remain `UNKNOWN`; and
+- reconciliation, not a guessed retry result, resolves external uncertainty;
 - duplicate delivery leaves application state unchanged;
 - produced messages preserve correlation and causation lineage;
 - preconditions are forwarded unchanged to the domain handler; and

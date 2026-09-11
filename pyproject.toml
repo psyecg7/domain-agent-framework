@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "domain-agent-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Technology-independent core runtime for generic domain agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,6 +20,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["agent_core*"]
 
 [tool.pytest.ini_options]
 pythonpath = [

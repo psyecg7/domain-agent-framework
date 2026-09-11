@@ -36,8 +36,62 @@ commits only after all subscribed handlers complete successfully; a handler
 failure leaves the offset uncommitted for broker redelivery. This is an
 at-least-once delivery posture, not exactly-once business execution.
 
-The 2S reconciliation integration tests are opt-in. Start the repository's
-single-node local broker, install this package's dependencies, and run them:
+The consumer fetches up to `batch_size` records per poll (default `100`). On a
+successful batch, it performs one synchronous commit containing the highest
+handled offset for each partition. If any handler fails, the batch is left
+uncommitted rather than committing past the failure. This favors safe
+redelivery over throughput during faults; handlers still need idempotency.
+
+When `RedpandaAgentRuntime.process_record()` routes a malformed terminal
+record to a configured dead-letter topic, it returns `None` only after the DLQ
+producer accepts that copy. A consumer loop may then commit the source record;
+without a successful DLQ route it must leave the offset uncommitted. Retryable
+failures still raise for ordinary broker redelivery. Raw non-JSON broker bytes
+remain a consumer-boundary deployment concern and must be routed through this
+same terminal-DLQ path rather than decoded outside it. For direct dispatcher
+use, pass `terminal_failure_handler=runtime.route_terminal_failure`; the
+dispatcher commits a malformed source record only when that callback returns
+`True` after the DLQ publish.
+
+`RedpandaConsumer` applies a 1 MiB ingress limit by default. Configure
+`max_record_bytes` for a domain-specific limit. A larger record becomes a
+terminal `RecordTooLarge` diagnostic containing only its byte count and
+SHA-256 digest—never a base64 copy of the original payload. As with other
+terminal failures, the source offset is committed only after the DLQ publisher
+accepts that bounded diagnostic.
+
+```python
+consumer = RedpandaConsumer(
+    {"bootstrap.servers": "localhost:9092", "group.id": "orders"},
+    topics=["orders"],
+    max_record_bytes=256 * 1024,
+)
+```
+
+## Dispatcher observability
+
+`RedpandaEventDispatcher` accepts optional lifecycle observers. One payload-free
+record is emitted for each completed poll: `succeeded` or `failed`, with poll,
+delivery, acknowledgement, terminal-DLQ counts, duration, and an error type
+when applicable.
+
+```python
+def metrics(batch):
+    print(batch.phase, batch.polled_records, batch.acknowledged_records)
+
+dispatcher = RedpandaEventDispatcher(consumer, observers=(metrics,))
+```
+
+Observers are best-effort. An observer exception is logged but cannot commit an
+offset, suppress a handler error, or otherwise change at-least-once delivery.
+No broker record payload is included in the lifecycle object. Exporting logs or
+metrics to OpenTelemetry, Prometheus, or another platform remains deployment
+configuration rather than an adapter dependency.
+
+The reconciliation integration tests run in the repository's service-backed
+CI workflow. To reproduce them locally, start the repository's Compose stack
+(it includes Redpanda and PostgreSQL), install this package's dependencies, and
+run them:
 
 ```bash
 docker compose -f docker-compose.redpanda.yml up -d
@@ -46,12 +100,18 @@ pip install -e ./agent-delta
 REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q agent-redpanda/tests/test_reconciliation_integration.py
 ```
 
+To exercise only the broker, use `up -d redpanda`; to also run the PostgreSQL
+atomicity integration test, use `up -d postgres` and follow
+[`agent-postgres`](../agent-postgres/README.md).
+
 They use the ordinary `inventory.reservation.reconciled` event boundary and
 exercise redelivery after a handler failure, reconciliation sequence ordering,
 lineage across consumer restart, and one keyed Delta write across a
-consumer-group ownership handoff. All four assertions have passed against the
-local Redpanda broker. Broker unavailability remains a separate, unverified
-scenario.
+consumer-group ownership handoff. The suite also publishes malformed non-JSON
+bytes and oversized bytes, proving that one terminal DLQ record is written
+before the source offset advances and that an oversized diagnostic does not
+copy its payload. All six assertions have passed against the local Redpanda
+broker. Broker unavailability remains a separate, unverified scenario.
 
 ### Manual broker-recovery check
 

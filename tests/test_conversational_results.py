@@ -3,19 +3,17 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Callable
 
+from agent_app import ConversationalGateway, DeterministicResponseInterpreter
 from agent_core import (
     Action,
     Agent,
     Capability,
     Decision,
-    DeterministicResponseInterpreter,
     Event,
     InMemoryCapabilityRegistry,
     Intent,
     State,
 )
-from agent_core.runtime.conversation import ConversationalGateway
-
 
 class InMemoryEventTransport:
     def __init__(self) -> None:

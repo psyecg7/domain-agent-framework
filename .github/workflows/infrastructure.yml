@@ -1,0 +1,50 @@
+name: Infrastructure integration
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  redpanda-postgres:
+    name: Redpanda and PostgreSQL durability checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Start local broker and database
+        run: docker compose -f docker-compose.redpanda.yml up -d
+      - name: Wait for PostgreSQL and Redpanda
+        run: |
+          for attempt in {1..30}; do
+            if docker compose -f docker-compose.redpanda.yml exec -T postgres \
+              pg_isready -U agent -d agent_atomic && nc -z 127.0.0.1 19092; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.redpanda.yml ps
+          docker compose -f docker-compose.redpanda.yml logs
+          exit 1
+      - name: Install integration dependencies and local packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest 'psycopg[binary]'
+          python -m pip install -e . -e ./agent-delta -e ./agent-postgres \
+            -e ./agent-enterprise -e ./agent-redpanda
+      - name: Run broker and database integration proofs
+        env:
+          POSTGRES_ATOMIC_DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent_atomic
+          REDPANDA_BOOTSTRAP_SERVERS: localhost:19092
+        run: |
+          python -m pytest -q \
+            tests/test_postgres_atomicity_integration.py \
+            tests/test_postgres_redpanda_receipt_integration.py \
+            agent-redpanda/tests/test_reconciliation_integration.py
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.redpanda.yml logs
+      - name: Stop local services
+        if: always()
+        run: docker compose -f docker-compose.redpanda.yml down -v

@@ -82,8 +82,9 @@ offsets only after successful handlers. This establishes an at-least-once
 delivery posture for the adapter; duplicate events remain a domain/process
 concern handled by the existing event and reconciliation identities.
 
-The broker integration tests are opt-in. `docker-compose.redpanda.yml` provides
-a local single-node broker; install `./agent-redpanda` and `./agent-delta`, then run them with
+The broker integration tests run in service-backed CI. For local reproduction,
+`docker-compose.redpanda.yml` provides a single-node broker; install
+`./agent-redpanda` and `./agent-delta`, then run them with
 `REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q agent-redpanda/tests/test_reconciliation_integration.py`.
 
 ### Broker-run result
@@ -205,7 +206,10 @@ or compensation feature.
 
 - Domain adapters may eventually need a standard way to express operation attempts and freshness, but the correct ownership and schema are not established.
 - A future application utility could reduce repeated event-correlation code, but it must not become a generic reconciliation engine.
-- Durable domain evidence and external-system reconciliation may require separate contracts.
+- Delta-backed reservation evidence now demonstrates durable restart recovery,
+  while `PostgresAtomicOperationStore` provides an optional transactional
+  multi-worker path. The exact storage topology, write serialization, and
+  external-system reconciliation contract remain deployment/domain concerns.
 
 ## What 2S disproved
 
@@ -214,9 +218,11 @@ or compensation feature.
 ## Open questions
 
 - Whether reconciliation should target the whole operation or a specific attempt in production.
-- How Inventory persists and exposes authoritative evidence after restart.
+- Which production evidence store and cross-process serialization topology a
+  domain chooses after the Delta and PostgreSQL references.
 - How stale reconciliation evidence is versioned durably.
-- How external legacy systems produce authoritative or still-unknown answers.
+- How each external provider meets the documented idempotency and reconciliation
+  admission rule.
 - What human recovery procedure applies to unresolved conflicts.
 - Whether result publication guarantees need a domain-specific delivery contract.
 
