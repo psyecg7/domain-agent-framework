@@ -66,3 +66,8 @@ as a complete one.
   including backup, recorded-version verification, and canary rollout;
 - update changelogs and compatibility documentation for removals or changed
   limits.
+
+For package-index publication after a tagged release, follow the separate
+[publishing guide](publishing.md). TestPyPI and PyPI uploads are immutable;
+their trusted-publisher workflow setup is an operator prerequisite, not a
+normal CI side effect.

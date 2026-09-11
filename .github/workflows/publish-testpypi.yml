@@ -1,0 +1,84 @@
+name: Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.project }} distributions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - directory: .
+            project: domain-agent-core
+          - directory: agent-app
+            project: domain-agent-app
+          - directory: agent-conformance
+            project: domain-agent-conformance
+          - directory: agent-delta
+            project: agent-delta
+          - directory: agent-enterprise
+            project: agent-enterprise
+          - directory: agent-lancedb
+            project: agent-lancedb
+          - directory: agent-ollama
+            project: agent-ollama
+          - directory: agent-openai
+            project: agent-openai
+          - directory: agent-postgres
+            project: agent-postgres
+          - directory: agent-redpanda
+            project: agent-redpanda
+          - directory: agent-scheduler
+            project: agent-scheduler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade build
+      - run: python -m build ${{ matrix.directory }} --outdir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project }}-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish ${{ matrix.project }} to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/${{ matrix.project }}/
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - domain-agent-core
+          - domain-agent-app
+          - domain-agent-conformance
+          - agent-delta
+          - agent-enterprise
+          - agent-lancedb
+          - agent-ollama
+          - agent-openai
+          - agent-postgres
+          - agent-redpanda
+          - agent-scheduler
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.project }}-dist
+          path: dist
+      - name: Publish distribution to TestPyPI through OIDC
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

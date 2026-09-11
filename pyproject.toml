@@ -9,7 +9,7 @@ description = "Technology-independent core runtime for generic domain agents"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "domain-agent-framework" }]
-license = { text = "MIT" }
+license = "MIT"
 dependencies = []
 
 [project.optional-dependencies]
