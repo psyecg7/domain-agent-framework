@@ -8,7 +8,7 @@ import inspect
 
 import pytest
 
-from agent_application import CapabilityInvoker, UnknownCapabilityError
+from agent_app import CapabilityInvoker, UnknownCapabilityError
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
 from agent_delta import (
     ApprovalEvidenceUnavailable,

@@ -7,13 +7,12 @@ from typing import Any
 
 import pytest
 
+from agent_app import CapabilityResolutionError, ConversationalGateway
 from agent_core import (
     Action,
     ActionConstructionError,
     Agent,
     Capability,
-    CapabilityResolutionError,
-    ConversationalGateway,
     Decision,
     Event,
     InMemoryCapabilityRegistry,

@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-enterprise"
-version = "0.1.0"
+version = "0.2.0"
 description = "Optional cross-service authorization reference for domain-agent-framework"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "cryptography>=42.0",
-    "agent-delta>=0.1.0,<0.2.0",
-    "agent-postgres>=0.1.0,<0.2.0",
-    "domain-agent-core>=0.1.0,<0.2.0",
+    "agent-delta>=0.2.0,<0.3.0",
+    "agent-postgres>=0.2.0,<0.3.0",
+    "domain-agent-core>=0.2.0,<0.3.0",
 ]
 
 [tool.setuptools]

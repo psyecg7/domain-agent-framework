@@ -1,0 +1,71 @@
+# Development/staging integration profile for identity, key, and mTLS wiring.
+# This is not a production security deployment: every credential is disposable.
+
+# Keep this isolated from docker-compose.redpanda.yml so Compose never treats
+# the broker/database stack as an orphan when this profile is started or stopped.
+name: domain-agent-enterprise
+
+services:
+  identity-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak-dev-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - enterprise-identity-db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin-dev-only
+      KC_DB: postgres
+      KC_DB_URL_HOST: identity-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak-dev-only
+      # Keep the local readiness endpoint on the public development listener;
+      # production commonly exposes it only on an internal management port.
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_HEALTH_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      identity-db:
+        condition: service_healthy
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+
+  vault:
+    image: hashicorp/vault:1.21
+    command: server -dev -dev-root-token-id=dev-root-token -dev-listen-address=0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+    ports:
+      - "127.0.0.1:8200:8200"
+
+  step-ca:
+    image: smallstep/step-ca:0.29.0
+    environment:
+      DOCKER_STEPCA_INIT_NAME: domain-agent-framework development CA
+      DOCKER_STEPCA_INIT_DNS_NAMES: step-ca,localhost
+      DOCKER_STEPCA_INIT_PROVISIONER_NAME: development-admin
+      DOCKER_STEPCA_INIT_PASSWORD: step-ca-dev-only
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - enterprise-step-ca:/home/step
+
+volumes:
+  enterprise-identity-db:
+  enterprise-step-ca:

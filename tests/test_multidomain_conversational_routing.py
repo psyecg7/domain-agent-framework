@@ -4,11 +4,11 @@ import json
 from collections import defaultdict
 from typing import Any, Callable
 
+from agent_app import ConversationalGateway
 from agent_core import (
     Action,
     Agent,
     Capability,
-    ConversationalGateway,
     Decision,
     Event,
     InMemoryCapabilityRegistry,

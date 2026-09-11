@@ -32,13 +32,22 @@ surface most developers use, and **adapters** provide durable state, transport,
 models, and enterprise infrastructure. `agent-app` is not a second runtime or
 a disposable shim; it is the public local-first application API.
 
+Capability invocation is application composition: import `CapabilityInvoker`
+from `agent_app`, not `agent_core`. It resolves a registered Intent and
+publishes one Event; it never calls a target Agent directly.
+
+Conversational routing and response rendering are application composition too:
+import `ConversationalGateway` and `DeterministicResponseInterpreter` from
+`agent_app`, not `agent_core`.
+
 [`agent-conformance`](agent-conformance/README.md) is a separate test-only
 package. It turns the demonstrated operation, outbox, and reconciliation
 patterns into reusable CI assertions without adding runtime primitives. It
 currently checks stable-operation and duplicate-delivery idempotency, restart
 reconciliation, the closed reconciliation outcome vocabulary, pending-outbox
 behavior after a pre-acceptance publish failure, lineage preservation,
-precondition forwarding and stale-conflict behavior, and explicit
+precondition forwarding and stale-conflict behavior, atomic rollback,
+duplicate-outbox protection, external idempotency identity, and explicit
 unresolved-result uncertainty. It is a
 callable assertion/template library, not an auto-discovered test suite; domain
 teams invoke its checks from their own tests. It has no runtime dependency on
@@ -54,6 +63,22 @@ in [the conformance CI workflow](.github/workflows/conformance.yml).
 For package versions, supported Python releases, and the distinction between
 clean-install, unit, and infrastructure validation, see the
 [release compatibility policy](docs/release-compatibility.md).
+
+Run the repository's complete local verification with
+`bash scripts/verify_framework.sh`. It runs deterministic tests first, then
+starts the optional Redpanda/PostgreSQL Compose profile when Docker and the
+required Python drivers are available; otherwise it reports that infrastructure
+validation was skipped. Set `VERIFY_INFRA=0` to run only deterministic checks.
+
+For the production boundary—what is verified here, what requires domain or
+platform controls, and what is intentionally not claimed—read the
+[production safety case](docs/production-safety-case.md) before deploying a
+side-effecting agent.
+
+For payment providers, devices, or third-party APIs, also follow the
+[external side-effect boundary](docs/external-effect-boundary.md): the
+framework requires stable idempotency identity and reconciliation, not guessed
+retries after a lost provider result.
 
 For a local prototype, you need one app, one policy, and one event:
 
@@ -94,7 +119,7 @@ The runtime is built around a sequence of explicit steps:
 3. The observations are applied to an `Entity`'s current `State`.
 4. An optional `Reasoner` produces non-authoritative `Recommendation` objects from the state and context.
 5. Deterministic policy evaluation turns the state and, when supported, recommendations into `Decision` objects.
-7. `Decision` objects can be converted into generic `Action` instructions.
+6. `Decision` objects can be converted into generic `Action` instructions.
 
 ## Deterministic policy evaluation vs AI reasoning
 
@@ -122,8 +147,15 @@ For a separately deployed Policy service and Executor service, the optional
 Ed25519 authorization. Policy holds the private key; Executor holds only the
 public key and verifies a short-lived, replay-protected authorization bound to
 the Decision ID, action target/type, parameters, idempotency key, and executor
-audience. This is intentionally outside `agent-core`: it is meaningful only
-across real deployment trust domains.
+audience. It can also reject a decision after revocation and require the
+receiving Executor to declare its owned action types. Multi-replica deployments
+use the optional PostgreSQL replay/revocation stores and still need a tested
+revocation-propagation SLO. This is intentionally outside `agent-core`: it is
+meaningful only across real deployment trust domains.
+
+An [enterprise security Compose profile](docs/enterprise-compose.md) provides
+disposable Keycloak, Vault, and step-ca services for local integration. It is
+explicitly not a production identity, CA, or key-management deployment.
 
 ## Domain-owned approval evidence
 
@@ -229,7 +261,10 @@ Human request
     -> result Event -> ResponseInterpreter -> Human response
 ```
 
-The `ConversationalGateway` is an application-level boundary. It translates human requests into domain events and domain result events into human responses. It does not own domain state, policy, decisions, actions, or workflows, and it never reads a domain store or calls a domain agent directly.
+The `agent_app.ConversationalGateway` is an application-level boundary. It
+translates human requests into domain events and domain result events into human
+responses. It does not own domain state, policy, decisions, actions, or
+workflows, and it never reads a domain store or calls a domain agent directly.
 
 Result events use the generic `Event` primitive. A capability may declare its result event type through metadata such as `{"result_event_type": "inventory.availability.result"}`. The gateway correlates a result only when its event type and `metadata["correlation_id"]` match a pending request. `correlation_id` remains stable across the interaction; `causation_id` identifies the immediate request, action, or result that caused the next event.
 
@@ -831,7 +866,10 @@ Event durability means an event envelope was persisted or delivered; it does not
   durability and cross-process serialization contract of the evidence beneath
   that query remains infrastructure-specific.
 - The current generic `Action` contract does not require operation ID or attempt fields, so domain adapters must carry them in their own capability payloads.
-- Durable result publication, outbox-like guarantees, and result observation acknowledgements remain operational concerns not solved by this experiment.
+- `PostgresAtomicOperationStore` now demonstrates a co-located database
+  mutation/operation/outbox transaction. Broker acceptance and result
+  observation remain operational concerns; an external effect still cannot join
+  that transaction.
 - Conflict resolution authority and manual recovery procedures remain domain/application decisions.
 
 ### What 2Q Disproved
@@ -840,15 +878,32 @@ Event durability means an event envelope was persisted or delivered; it does not
 
 ### Core Impact
 
-`agent-core` was unchanged. Existing `Event`, `Intent`, `Capability`, `Decision`, `Action`, and application-level ledgers express the observed semantics. Adding a generic execution store, idempotency manager, or reconciliation primitive would prematurely choose ownership for domain-specific guarantees.
+`agent-core` was unchanged. Existing `Event`, `Intent`, `Capability`,
+`Decision`, `Action`, and application-level ledgers express the observed
+semantics. The optional `agent-postgres` atomic operation/outbox adapter adds a
+transactional infrastructure path without choosing process, idempotency, or
+reconciliation semantics for a domain. A generic core execution store,
+idempotency manager, or reconciliation primitive would still prematurely choose
+that ownership.
 
 ### Architectural Conclusion
 
-The architecture can define an honest operation execution contract, but it cannot guarantee side-effect completion from process and event state alone. The safe boundary is: the process records what it requested and observed; the owning domain proves what it executed; infrastructure transports and persists evidence without manufacturing business certainty. No reusable execution abstraction is justified yet.
+The architecture can define an honest operation execution contract, but it
+cannot guarantee side-effect completion from process and event state alone. The
+safe boundary is: the process records what it requested and observed; the
+owning domain proves what it executed; infrastructure transports and persists
+evidence without manufacturing business certainty. An optional adapter-level
+atomic operation/outbox transaction is justified for co-located database work;
+no reusable core execution abstraction is.
 
 ## Technology independence
 
-This framework is intentionally technology-independent. It uses only Python standard library types and explicit interfaces. Infrastructure adapters live in separate packages: `agent-redpanda`, `agent-delta`, `agent-lancedb`, and `agent-ollama`.
+This framework is intentionally technology-independent. It uses only Python
+standard-library types and explicit interfaces in `agent-core`. Application
+composition, conformance checks, and infrastructure adapters live in separate
+packages: `agent-app`, `agent-conformance`, `agent-redpanda`, `agent-delta`,
+`agent-postgres`, `agent-lancedb`, `agent-ollama`, `agent-openai`,
+`agent-scheduler`, and `agent-enterprise`.
 
 Future adapters may integrate:
 

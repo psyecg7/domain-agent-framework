@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from agent_core import Agent, Event, State
 from agent_delta import DeltaStateStore
 
@@ -46,11 +44,8 @@ class GenericActionFactory:
         )()
 
 
-def test_delta_store_save_and_reload() -> None:
-    path = Path("/tmp/agent-delta-test-save")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_save_and_reload(tmp_path) -> None:
+    path = tmp_path / "save"
 
     store = DeltaStateStore(path)
     state = State(entity_id="sku-1", entity_type="inventory_item", values={"available_stock": 3}, version=1)
@@ -64,11 +59,8 @@ def test_delta_store_save_and_reload() -> None:
     assert reloaded.version == 1
 
 
-def test_delta_store_updates_existing_state() -> None:
-    path = Path("/tmp/agent-delta-test-update")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_updates_existing_state(tmp_path) -> None:
+    path = tmp_path / "update"
 
     store = DeltaStateStore(path)
     state = State(entity_id="sku-2", entity_type="inventory_item", values={"available_stock": 10}, version=1)
@@ -85,11 +77,8 @@ def test_delta_store_updates_existing_state() -> None:
     assert loaded.version == 2
 
 
-def test_delta_store_isolates_entity_keys() -> None:
-    path = Path("/tmp/agent-delta-test-keys")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_isolates_entity_keys(tmp_path) -> None:
+    path = tmp_path / "keys"
 
     store = DeltaStateStore(path)
     store.save(State(entity_id="sku-3", entity_type="inventory_item", values={"available_stock": 1}, version=1))
@@ -101,21 +90,15 @@ def test_delta_store_isolates_entity_keys() -> None:
     assert store.get("order-1", "order").values["risk_score"] == 0.9
 
 
-def test_delta_store_missing_state_returns_none() -> None:
-    path = Path("/tmp/agent-delta-test-missing")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_missing_state_returns_none(tmp_path) -> None:
+    path = tmp_path / "missing"
 
     store = DeltaStateStore(path)
     assert store.get("missing", "inventory_item") is None
 
 
-def test_delta_store_persists_across_restart() -> None:
-    path = Path("/tmp/agent-delta-test-restart")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_persists_across_restart(tmp_path) -> None:
+    path = tmp_path / "restart"
 
     first = DeltaStateStore(path)
     first.save(State(entity_id="sku-5", entity_type="inventory_item", values={"available_stock": 7}, version=1))
@@ -126,11 +109,8 @@ def test_delta_store_persists_across_restart() -> None:
     assert reloaded.version == 1
 
 
-def test_delta_store_works_with_agent_runtime() -> None:
-    path = Path("/tmp/agent-delta-test-agent")
-    if path.exists():
-        import shutil
-        shutil.rmtree(path)
+def test_delta_store_works_with_agent_runtime(tmp_path) -> None:
+    path = tmp_path / "agent"
 
     store = DeltaStateStore(path)
     agent = Agent(

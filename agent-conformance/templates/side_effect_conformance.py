@@ -9,6 +9,9 @@ assertions beside them.
 from agent_conformance import (
     assert_duplicate_delivery_is_ignored,
     assert_duplicate_operation_is_idempotent,
+    assert_external_effect_retries_use_stable_idempotency_key,
+    assert_external_reconciliation_resolves_unknown,
+    assert_external_transport_failure_remains_unknown,
     assert_missing_result_remains_unknown,
     assert_restart_reconciles_effect,
     assert_stale_preconditions_conflict,
@@ -47,4 +50,25 @@ def test_reservation_missing_evidence_is_explicit(reservation_domain) -> None:
     assert_missing_result_remains_unknown(
         "result-lost-before-evidence",
         reconcile=reservation_domain.reconcile,
+    )
+
+
+def test_external_effect_boundary(external_effect_domain) -> None:
+    """Use for payment, device, or third-party API operations."""
+    operation_id = "external-effect-1"
+    assert_external_effect_retries_use_stable_idempotency_key(
+        operation_id,
+        attempt=external_effect_domain.attempt,
+        observed_idempotency_keys=external_effect_domain.observed_provider_keys,
+    )
+    assert_external_transport_failure_remains_unknown(
+        operation_id,
+        attempt=external_effect_domain.timeout_after_possible_acceptance,
+        status=external_effect_domain.status,
+    )
+    assert_external_reconciliation_resolves_unknown(
+        operation_id,
+        status=external_effect_domain.status,
+        reconcile=external_effect_domain.reconcile,
+        expected_status="SUCCEEDED",  # Replace with the provider-proven domain outcome.
     )

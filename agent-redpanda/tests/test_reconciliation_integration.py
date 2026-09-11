@@ -7,6 +7,7 @@ repository's ``docker-compose.redpanda.yml`` service.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import os
 import sys
 import time
@@ -23,10 +24,12 @@ if not BOOTSTRAP:
     pytest.skip("set REDPANDA_BOOTSTRAP_SERVERS to run broker integration tests", allow_module_level=True)
 
 pytest.importorskip("confluent_kafka")
+from confluent_kafka import Producer
 
 from agent_core import Event
 from agent_delta import DeltaReservationEvidenceStore
 from agent_redpanda import RedpandaConsumer, RedpandaEventDispatcher, RedpandaEventTransport, RedpandaProducer
+from agent_redpanda.runtime import RedpandaAgentRuntime
 
 # The broker suite deliberately reuses the frozen 2S OrderProcess fixture so
 # redelivery and ordering exercise the same observation contract as its unit
@@ -47,7 +50,7 @@ _fixture_spec.loader.exec_module(_fixture_module)
 OrderProcess = _fixture_module.OrderProcess
 
 
-def _consumer(topic: str, group_id: str) -> RedpandaConsumer:
+def _consumer(topic: str, group_id: str, *, max_record_bytes: int = RedpandaConsumer.DEFAULT_MAX_RECORD_BYTES) -> RedpandaConsumer:
     return RedpandaConsumer(
         {
             "bootstrap.servers": BOOTSTRAP,
@@ -55,6 +58,7 @@ def _consumer(topic: str, group_id: str) -> RedpandaConsumer:
             "auto.offset.reset": "earliest",
         },
         topics=[topic],
+        max_record_bytes=max_record_bytes,
     )
 
 
@@ -269,3 +273,87 @@ def test_keyed_delta_evidence_write_has_one_consumer_owner_across_group_handoff(
     assert owners[0] != owners[1]
     assert writes == [True, False]
     assert store.reconcile(operation_id) == "EXISTS"
+
+
+def test_malformed_broker_bytes_reach_dlq_once_and_source_offset_advances() -> None:
+    """A non-JSON payload must not cause an infinite consumer crash loop."""
+    prefix = f"agent-dlq-{uuid.uuid4().hex}"
+    source_topic, dead_letter_topic = f"{prefix}-source", f"{prefix}-dlq"
+    producer = Producer({"bootstrap.servers": BOOTSTRAP})
+    producer.produce(source_topic, key="bad-1", value=b"\xffnot-json")
+    # Create the DLQ topic before subscribing; the local broker otherwise
+    # reports UNKNOWN_TOPIC_OR_PART while topic auto-creation propagates.
+    producer.produce(dead_letter_topic, key="seed", value=b'{"seed":true}')
+    assert producer.flush(10) == 0
+
+    source_consumer = _consumer(source_topic, f"{prefix}-source-group")
+    dlq_consumer = _consumer(dead_letter_topic, f"{prefix}-dlq-group")
+    runtime = RedpandaAgentRuntime(
+        object(),  # Mapping fails before Agent processing for malformed bytes.
+        producer=RedpandaProducer({"bootstrap.servers": BOOTSTRAP}),
+        dead_letter_topic=dead_letter_topic,
+    )
+    dispatcher = RedpandaEventDispatcher(
+        source_consumer,
+        terminal_failure_handler=runtime.route_terminal_failure,
+    )
+    try:
+        deadline = time.monotonic() + 15.0
+        dlq_records: list[dict] = []
+        while time.monotonic() < deadline:
+            dispatcher.dispatch(timeout=0.5)
+            dlq_records.extend(
+                record for record in dlq_consumer.poll(timeout=0.5) if "_failure" in record
+            )
+            if dlq_records:
+                break
+        assert len(dlq_records) == 1
+        assert dlq_records[0]["_decode_failure"]["raw_value_base64"] == "/25vdC1qc29u"
+        assert dlq_records[0]["_failure"]["terminal"] is True
+
+        # The source dispatcher has committed the terminal record, so another
+        # poll from the same group observes no replay of the poison bytes.
+        assert source_consumer.poll(timeout=0.5) == []
+    finally:
+        source_consumer.close()
+        dlq_consumer.close()
+
+
+def test_oversized_broker_bytes_reach_bounded_dlq_once_and_source_offset_advances() -> None:
+    """Oversized ingress is terminal, but the DLQ never copies its payload."""
+    prefix = f"agent-oversized-dlq-{uuid.uuid4().hex}"
+    source_topic, dead_letter_topic = f"{prefix}-source", f"{prefix}-dlq"
+    raw_value = b"x" * 33
+    producer = Producer({"bootstrap.servers": BOOTSTRAP})
+    producer.produce(source_topic, key="too-large-1", value=raw_value)
+    producer.produce(dead_letter_topic, key="seed", value=b'{"seed":true}')
+    assert producer.flush(10) == 0
+
+    source_consumer = _consumer(source_topic, f"{prefix}-source-group", max_record_bytes=32)
+    dlq_consumer = _consumer(dead_letter_topic, f"{prefix}-dlq-group")
+    runtime = RedpandaAgentRuntime(
+        object(),
+        producer=RedpandaProducer({"bootstrap.servers": BOOTSTRAP}),
+        dead_letter_topic=dead_letter_topic,
+    )
+    dispatcher = RedpandaEventDispatcher(source_consumer, terminal_failure_handler=runtime.route_terminal_failure)
+    try:
+        deadline = time.monotonic() + 15.0
+        dlq_records: list[dict] = []
+        while time.monotonic() < deadline:
+            dispatcher.dispatch(timeout=0.5)
+            dlq_records.extend(record for record in dlq_consumer.poll(timeout=0.5) if "_failure" in record)
+            if dlq_records:
+                break
+        assert len(dlq_records) == 1
+        diagnostic = dlq_records[0]["_decode_failure"]
+        assert diagnostic["type"] == "RecordTooLarge"
+        assert diagnostic["size_bytes"] == len(raw_value)
+        assert diagnostic["sha256"] == hashlib.sha256(raw_value).hexdigest()
+        assert diagnostic["payload_omitted"] is True
+        assert "raw_value_base64" not in diagnostic
+        assert dlq_records[0]["_failure"]["terminal"] is True
+        assert source_consumer.poll(timeout=0.5) == []
+    finally:
+        source_consumer.close()
+        dlq_consumer.close()

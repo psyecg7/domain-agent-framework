@@ -146,3 +146,17 @@ def test_redpanda_runtime_supports_other_event_types_without_domain_specific_log
     assert result.actions[0].action_type == "HOLD_ORDER"
     assert producer.messages[0][0] == "agent.decisions"
     assert producer.messages[1][0] == "agent.actions"
+
+
+def test_terminal_bad_record_is_routed_once_without_requesting_a_crash_loop() -> None:
+    runtime = RedpandaAgentRuntime(
+        Agent(InMemoryStateStore(), InventoryPolicyEngine()),
+        producer=(producer := FakeProducer()),
+        dead_letter_topic="agent.dead-letter",
+    )
+
+    # Missing Event fields makes mapping terminal rather than a retryable
+    # domain failure. A consumer loop may commit after the None signal.
+    assert runtime.process_record({"_transport": {"topic": "orders", "partition": 0, "offset": 3}}) is None
+    assert producer.messages[0][0] == "agent.dead-letter"
+    assert producer.messages[0][2]["_failure"]["terminal"] is True

@@ -15,6 +15,7 @@ from agent_enterprise import (
     DeltaReplayStore,
     DeltaAuthorizationAuditStore,
     InMemoryReplayStore,
+    InMemoryRevocationStore,
     PolicyAuthorizationIssuer,
     SignedAuthorization,
 )
@@ -63,6 +64,40 @@ def test_authorized_executor_never_calls_the_effect_before_verification() -> Non
     assert executed == []
 
     executor.execute(execution, issuer.authorize(execution, audience="order-executor"))
+    assert executed == [execution]
+
+
+def test_revoked_decision_is_rejected_before_the_effect_or_replay_claim() -> None:
+    issuer = PolicyAuthorizationIssuer.generate(key_id="policy", issuer="order-policy")
+    revocations = InMemoryRevocationStore()
+    verifier = ExecutorAuthorizationVerifier.from_pem(
+        {"policy": issuer.public_key_pem()},
+        audience="order-executor",
+        replay_store=InMemoryReplayStore(),
+        revocation_store=revocations,
+    )
+    execution = command()
+    authorization = issuer.authorize(execution, audience="order-executor")
+    revocations.revoke(execution.decision_id, expires_at=authorization.claims["expires_at"])
+    executed: list[ExecutionCommand] = []
+
+    with pytest.raises(AuthorizationError, match="revoked"):
+        AuthorizedCommandExecutor(verifier, executed.append).execute(execution, authorization)
+    assert executed == []
+
+
+def test_executor_rejects_an_authorized_action_it_does_not_own_without_consuming_it() -> None:
+    issuer, verifier = boundary()
+    execution = command()
+    authorization = issuer.authorize(execution, audience="order-executor")
+    executed: list[ExecutionCommand] = []
+
+    with pytest.raises(AuthorizationError, match="does not own"):
+        AuthorizedCommandExecutor(verifier, executed.append, owned_action_types={"RELEASE_ORDER"}).execute(execution, authorization)
+    assert executed == []
+
+    # A rejected misroute must not burn the authorization before its owner sees it.
+    AuthorizedCommandExecutor(verifier, executed.append, owned_action_types={"CREATE_ORDER"}).execute(execution, authorization)
     assert executed == [execution]
 
 
@@ -130,4 +165,15 @@ def test_executor_rejects_tampered_signature_wrong_audience_and_expiry() -> None
 
     expired = issuer.authorize(execution, audience="order-executor", ttl=timedelta(seconds=1))
     with pytest.raises(AuthorizationError, match="expired"):
-        verifier.verify(execution, expired, now=expired.claims["expires_at"])
+        verifier.verify(
+            execution,
+            expired,
+            now=expired.claims["expires_at"] + verifier.clock_skew_seconds,
+        )
+
+
+def test_executor_allows_only_its_configured_clock_skew_window() -> None:
+    issuer, verifier = boundary()
+    execution = command()
+    authorization = issuer.authorize(execution, audience="order-executor", ttl=timedelta(seconds=1))
+    verifier.verify(execution, authorization, now=authorization.claims["expires_at"] + verifier.clock_skew_seconds - 1)

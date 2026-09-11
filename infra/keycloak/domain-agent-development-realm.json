@@ -1,0 +1,43 @@
+{
+  "realm": "domain-agent-development",
+  "enabled": true,
+  "displayName": "Domain Agent Development",
+  "clientScopes": [
+    {
+      "name": "order:submit",
+      "description": "Permits a caller to submit an order to Policy in the local integration profile.",
+      "protocol": "openid-connect",
+      "attributes": {"include.in.token.scope": "true"}
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "policy-service",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["order:submit"],
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "policy-service-dev-only"
+    },
+    {
+      "clientId": "order-client",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["order:submit"],
+      "protocolMappers": [
+        {
+          "name": "policy-service audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {"included.client.audience": "policy-service", "access.token.claim": "true", "id.token.claim": "false"}
+        }
+      ],
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "order-client-dev-only"
+    }
+  ]
+}

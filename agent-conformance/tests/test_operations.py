@@ -2,7 +2,12 @@ import pytest
 
 from agent_conformance import (
     assert_duplicate_delivery_is_ignored,
+    assert_duplicate_operation_has_one_outbox_message,
     assert_duplicate_operation_is_idempotent,
+    assert_external_effect_retries_use_stable_idempotency_key,
+    assert_external_reconciliation_resolves_unknown,
+    assert_external_transport_failure_remains_unknown,
+    assert_failed_atomic_operation_rolls_back,
     assert_failed_publish_remains_pending,
     assert_lineage_is_preserved,
     assert_missing_result_remains_unknown,
@@ -93,4 +98,94 @@ def test_duplicate_delivery_helper_rejects_a_second_state_transition() -> None:
         assert_duplicate_delivery_is_ignored(
             deliver=lambda: observed.append("event-1"),
             observed_state=lambda: tuple(observed),
+        )
+
+
+def test_atomicity_helpers_accept_one_outbox_message_and_full_rollback() -> None:
+    pending: list[str] = []
+    applied: list[str] = []
+
+    def execute(operation_id: str) -> None:
+        if operation_id not in applied:
+            applied.append(operation_id)
+            pending.append(f"event:{operation_id}")
+
+    assert_duplicate_operation_has_one_outbox_message(
+        "reserve-1",
+        execute=execute,
+        pending_messages=lambda: tuple(pending),
+        message_identity=lambda message: message,
+    )
+
+    def fail_after_mutation() -> None:
+        applied.append("rollback")
+        pending.append("event:rollback")
+        applied.remove("rollback")
+        pending.remove("event:rollback")
+        raise RuntimeError("transaction rolled back")
+
+    assert_failed_atomic_operation_rolls_back(
+        execute=fail_after_mutation,
+        observed_state=lambda: tuple(applied),
+        pending_messages=lambda: tuple(pending),
+    )
+
+
+def test_external_effect_helpers_require_stable_identity_unknown_and_reconciliation() -> None:
+    provider_keys: list[str] = []
+    status = {"payment-1": "PENDING", "payment-timeout": "PENDING"}
+
+    def accepted_attempt(operation_id: str) -> None:
+        provider_keys.append(operation_id)
+
+    assert_external_effect_retries_use_stable_idempotency_key(
+        "payment-1",
+        attempt=accepted_attempt,
+        observed_idempotency_keys=lambda: tuple(provider_keys),
+    )
+
+    def timeout(operation_id: str) -> None:
+        provider_keys.append(operation_id)
+        status[operation_id] = "UNKNOWN"
+        raise TimeoutError("provider result was lost")
+
+    assert_external_transport_failure_remains_unknown(
+        "payment-timeout",
+        attempt=timeout,
+        status=lambda operation_id: status[operation_id],
+    )
+    assert_external_reconciliation_resolves_unknown(
+        "payment-timeout",
+        status=lambda operation_id: status[operation_id],
+        reconcile=lambda operation_id: status.__setitem__(operation_id, "SUCCEEDED"),
+        expected_status="SUCCEEDED",
+    )
+
+
+def test_external_effect_helpers_reject_unsafe_retry_and_guessed_result() -> None:
+    provider_keys: list[str] = []
+
+    def unsafe_attempt(operation_id: str) -> None:
+        provider_keys.append(f"{operation_id}-{len(provider_keys)}")
+
+    with pytest.raises(AssertionError, match="same operation ID"):
+        assert_external_effect_retries_use_stable_idempotency_key(
+            "payment-unsafe",
+            attempt=unsafe_attempt,
+            observed_idempotency_keys=lambda: tuple(provider_keys),
+        )
+
+    with pytest.raises(AssertionError, match="must remain UNKNOWN"):
+        assert_external_transport_failure_remains_unknown(
+            "payment-guessed",
+            attempt=lambda operation_id: None,
+            status=lambda operation_id: "SUCCEEDED",
+        )
+
+    with pytest.raises(AssertionError, match="expected 'SUCCEEDED'"):
+        assert_external_reconciliation_resolves_unknown(
+            "payment-unresolved",
+            status=lambda operation_id: "UNKNOWN",
+            reconcile=lambda operation_id: None,
+            expected_status="SUCCEEDED",
         )
