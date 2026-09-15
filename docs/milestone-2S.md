@@ -83,7 +83,7 @@ delivery posture for the adapter; duplicate events remain a domain/process
 concern handled by the existing event and reconciliation identities.
 
 The broker integration tests run in service-backed CI. For local reproduction,
-`docker-compose.redpanda.yml` provides a single-node broker; install
+`docker-compose.infra.yml` provides a single-node broker; install
 `./transport-redpanda` and `./storage-delta`, then run them with
 `REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q transport-redpanda/tests/test_reconciliation_integration.py`.
 

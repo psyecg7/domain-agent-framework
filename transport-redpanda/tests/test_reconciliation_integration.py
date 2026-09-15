@@ -1,7 +1,7 @@
 """Opt-in broker assertions for the frozen 2S reconciliation contract.
 
 Run with ``REDPANDA_BOOTSTRAP_SERVERS=localhost:19092`` after starting the
-repository's ``docker-compose.redpanda.yml`` service.
+repository's ``docker-compose.infra.yml`` service.
 """
 
 from __future__ import annotations

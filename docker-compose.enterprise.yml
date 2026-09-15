@@ -1,7 +1,7 @@
 # Development/staging integration profile for identity, key, and mTLS wiring.
 # This is not a production security deployment: every credential is disposable.
 
-# Keep this isolated from docker-compose.redpanda.yml so Compose never treats
+# Keep this isolated from docker-compose.infra.yml so Compose never treats
 # the broker/database stack as an orphan when this profile is started or stopped.
 name: domain-enterprise
 

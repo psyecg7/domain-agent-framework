@@ -94,7 +94,7 @@ CI workflow. To reproduce them locally, start the repository's Compose stack
 run them:
 
 ```bash
-docker compose -f docker-compose.redpanda.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 pip install -e ./transport-redpanda
 pip install -e ./storage-delta
 REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q transport-redpanda/tests/test_reconciliation_integration.py
