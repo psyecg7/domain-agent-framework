@@ -14,18 +14,18 @@ jobs:
         with:
           python-version: "3.12"
       - name: Start local broker and database
-        run: docker compose -f docker-compose.redpanda.yml up -d
+        run: docker compose -f docker-compose.infra.yml up -d
       - name: Wait for PostgreSQL and Redpanda
         run: |
           for attempt in {1..30}; do
-            if docker compose -f docker-compose.redpanda.yml exec -T postgres \
+            if docker compose -f docker-compose.infra.yml exec -T postgres \
               pg_isready -U agent -d agent_atomic && nc -z 127.0.0.1 19092; then
               exit 0
             fi
             sleep 2
           done
-          docker compose -f docker-compose.redpanda.yml ps
-          docker compose -f docker-compose.redpanda.yml logs
+          docker compose -f docker-compose.infra.yml ps
+          docker compose -f docker-compose.infra.yml logs
           exit 1
       - name: Install integration dependencies and local packages
         run: |
@@ -45,7 +45,7 @@ jobs:
             examples/kad-inventory/tests/test_postgres_order_protocol_integration.py
       - name: Show service logs on failure
         if: failure()
-        run: docker compose -f docker-compose.redpanda.yml logs
+        run: docker compose -f docker-compose.infra.yml logs
       - name: Stop local services
         if: always()
-        run: docker compose -f docker-compose.redpanda.yml down -v
+        run: docker compose -f docker-compose.infra.yml down -v
