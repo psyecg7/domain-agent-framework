@@ -74,6 +74,7 @@ exists:
 | An AI should suggest ideas | `model-openai` or `model-ollama` |
 | That AI needs related notes/documents | `memory-lancedb` |
 | Policy and execution run in different trust domains | `enterprise` |
+| Services in different languages must interoperate | [`protocol`](protocol/README.md) |
 
 LanceDB is only the fourth optional row. It searches notes and documents for an
 AI reasoner. It never holds current stock, order status, payment results, or
@@ -155,6 +156,11 @@ callable assertion/template library, not an auto-discovered test suite; domain
 teams invoke its checks from their own tests. It has no runtime dependency on
 `agent-core` or `agent-app`, so the same checks apply to raw Agents, AgentApp
 applications, or adapter-only domain code.
+
+[`protocol`](protocol/README.md) is separate again: it is a language-neutral
+set of versioned JSON schemas and test vectors, not Python runtime code. Use it
+when a service in another language must produce or consume framework events, or
+verify an Enterprise authorization.
 
 To adopt those checks in a side-effecting domain, start from the
 [conformance template](conformance/templates/side_effect_conformance.py)

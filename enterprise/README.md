@@ -16,6 +16,15 @@ the target domain performs its own native atomic conditional write. A stale
 precondition becomes a business `CONFLICT`, not a framework retry or inferred
 success. This avoids imposing a universal `state_version` model on `agent-core`.
 
+## Language-neutral wire contract
+
+The Policy and Executor boundary is not Python-only. Its versioned command and
+authorization JSON schemas, canonical signing rules, and fixed Ed25519 vector
+are in [`protocol/enterprise`](../protocol/enterprise/signing-v1.md). Another
+language can implement the Executor if it verifies that vector unchanged and
+implements the same replay, time-window, audience, and domain-precondition
+checks.
+
 `DeltaInventoryReservationHandler` is the runnable Inventory reference: it
 uses a Delta conditional update over the domain's product version, observed
 availability, and requested quantity. Two valid authorizations based on the

@@ -31,6 +31,15 @@ consumes records and invokes explicit event-type subscribers. Neither class
 performs local routing, retries business operations, or turns a broker failure
 into a domain result.
 
+## Language-neutral event envelope
+
+New records emitted by `RedpandaEventMapper` include `protocol_version: 1`.
+The versioned schema and a fixed round-trip vector live in
+[`protocol/events`](../protocol/events/event-envelope-v1.schema.json). A Go,
+Java, or TypeScript producer can emit the same record without using this Python
+package. The mapper accepts the legacy versionless shape during migration but
+rejects an explicitly unsupported version.
+
 `RedpandaConsumer` disables automatic offset commits by default. The dispatcher
 commits only after all subscribed handlers complete successfully; a handler
 failure leaves the offset uncommitted for broker redelivery. This is an
