@@ -41,6 +41,7 @@ that the resulting action came through that policy path.
 | Several workers change the same database state | [`storage-postgres`](../storage-postgres/README.md#atomic-operation-and-outbox-support) | Atomic operation claims, domain mutation, and an outbox record in one SQL transaction. |
 | Separate Policy and Executor services must distrust each other | [`enterprise`](../enterprise/README.md) | Signed authorizations, replay/revocation stores, OIDC, mTLS, and enterprise reference infrastructure. |
 | Verify domain safety patterns in CI | [`conformance`](../conformance/README.md) | Reusable assertions for idempotency, lineage, reconciliation, outboxes, and unresolved external effects. It is test-only. |
+| Exchange framework messages with a non-Python service | [`protocol`](../protocol/README.md) | Versioned JSON schemas, signing rules, and interoperability test vectors. It is not a runtime package. |
 
 ## LanceDB: optional context, never business truth
 

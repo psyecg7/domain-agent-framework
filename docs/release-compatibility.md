@@ -18,6 +18,10 @@ developer checkout can hide.
 | `storage-postgres` | PostgreSQL storage, conditional writes, and atomic operation/outbox support | Core `>=0.3.0,<0.4.0` |
 | `memory-lancedb`, `model-ollama`, `model-openai`, `transport-redpanda`, `scheduler` | Optional memory, model, transport, and scheduling packages | Core `>=0.3.0,<0.4.0` |
 
+[`protocol`](../protocol/README.md) is not a Python distribution. Its event and
+Enterprise authorization versions have their own compatibility rules and test
+vectors; see [Use the framework from another language](language-neutral-protocol.md).
+
 ## Versioning rules
 
 Each distributable package has its own version. `agent-app` is a public API,

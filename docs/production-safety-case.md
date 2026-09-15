@@ -71,6 +71,12 @@ The domain, not `agent-core`, owns the business meaning of `CONFLICT`,
 
 ### Cross-service, untrusted execution boundary
 
+The Enterprise authorization wire contract is language-neutral only for
+services that implement the published schemas, signing profile, and fixed test
+vectors. A service written in another language must pass those vectors before
+it is treated as an interoperable Policy or Executor. See
+[Use the framework from another language](language-neutral-protocol.md).
+
 Use the optional Enterprise Policy/Executor reference only as a starting point.
 Production deployment requires separately held signing keys, KMS/HSM-backed
 key rotation, service identity (mTLS and/or OIDC), short authorization TTLs,

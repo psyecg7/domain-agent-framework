@@ -57,6 +57,7 @@ Use the lower-level `Agent(...)` constructor only when you need one of these:
 | Give an AI reasoner optional related text | `memory-lancedb`; use it only with the advanced raw `Agent` API and keep business facts in the authoritative state store |
 | Ask another domain for a fact | capabilities and ordinary result events |
 | Protect high-risk cross-service effects | `enterprise` Policy/Executor authorization |
+| Exchange events or Enterprise authorizations with a non-Python service | [`protocol`](../protocol/README.md); see [the interoperability guide](language-neutral-protocol.md) |
 | Safely coordinate several database workers | `storage-postgres` atomic operation/outbox support |
 | Call a payment, device, or third-party API | the [external side-effect boundary](external-effect-boundary.md) |
 

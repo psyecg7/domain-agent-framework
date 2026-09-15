@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domain-agent-framework.dev/protocol/enterprise/execution-command-v1.schema.json",
+  "title": "Execution Command v1",
+  "type": "object",
+  "required": ["action_id", "decision_id", "action_type", "entity_id", "entity_type", "parameters", "preconditions", "parameters_sha256", "preconditions_sha256"],
+  "properties": {
+    "action_id": {"type": "string", "minLength": 1},
+    "decision_id": {"type": "string", "minLength": 1},
+    "action_type": {"type": "string", "minLength": 1},
+    "entity_id": {"type": "string", "minLength": 1},
+    "entity_type": {"type": "string", "minLength": 1},
+    "parameters": {"type": "object"},
+    "preconditions": {"type": "object"},
+    "parameters_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "preconditions_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "idempotency_key": {"type": ["string", "null"], "minLength": 1}
+  },
+  "additionalProperties": false
+}

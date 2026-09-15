@@ -14,6 +14,10 @@ Choose one path. You do not need to read this repository from top to bottom.
 ## I need to add a capability
 
 - [Component map](components.md): choose one package for one requirement.
+- [`protocol`](../protocol/README.md): implement the event or Enterprise
+  authorization boundary in another language.
+- [Use the framework from another language](language-neutral-protocol.md): the
+  practical event and authorization interoperability path.
 - [Developer guide](developer-guide.md): move from a local application to
   durable storage, transport, AI advice, and recovery.
 - [External effect boundary](external-effect-boundary.md): payments, devices,
