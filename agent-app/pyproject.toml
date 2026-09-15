@@ -3,12 +3,12 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "domain-agent-app"
-version = "0.2.0"
-description = "Simple local application layer for domain-agent-core"
+name = "agent-app"
+version = "0.3.0"
+description = "Simple local application layer for agent-core"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["domain-agent-core>=0.2.0,<0.3.0"]
+dependencies = ["agent-core>=0.3.0,<0.4.0"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

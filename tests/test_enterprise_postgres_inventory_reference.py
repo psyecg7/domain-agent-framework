@@ -1,5 +1,5 @@
 from agent_core import Decision, decision_to_action
-from agent_enterprise import (
+from enterprise import (
     AuthorizedCommandExecutor,
     ExecutionCommand,
     ExecutorAuthorizationVerifier,
@@ -7,7 +7,7 @@ from agent_enterprise import (
     PolicyAuthorizationIssuer,
     PostgresInventoryReservationHandler,
 )
-from agent_postgres import PostgresInventoryReservationAuthority
+from storage_postgres import PostgresInventoryReservationAuthority
 
 
 def authorization(issuer, handler, decision_id: str):

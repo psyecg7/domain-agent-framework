@@ -23,12 +23,12 @@ if not BOOTSTRAP:
 pytest.importorskip("confluent_kafka")
 
 from agent_core import Agent, Event
-from agent_postgres import (
+from storage_postgres import (
     PostgresAgentReceiptRunner,
     PostgresEventReceiptStore,
     PostgresStateStore,
 )
-from agent_redpanda import RedpandaConsumer, RedpandaEventDispatcher, RedpandaEventTransport, RedpandaProducer
+from transport_redpanda import RedpandaConsumer, RedpandaEventDispatcher, RedpandaEventTransport, RedpandaProducer
 
 
 def _consumer(topic: str, group_id: str) -> RedpandaConsumer:

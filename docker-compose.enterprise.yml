@@ -3,7 +3,7 @@
 
 # Keep this isolated from docker-compose.redpanda.yml so Compose never treats
 # the broker/database stack as an orphan when this profile is started or stopped.
-name: domain-agent-enterprise
+name: domain-enterprise
 
 services:
   identity-db:

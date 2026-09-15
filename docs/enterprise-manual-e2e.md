@@ -88,7 +88,7 @@ a startup banner.
 cd /Users/stefanorocco/apps/domain-agent-framework
 source .venv-3.12/bin/activate
 
-python -m agent_enterprise.policy_service \
+python -m enterprise.policy_service \
   --public-key-out /tmp/policy.pub \
   --vault-url http://127.0.0.1:8200 \
   --vault-token dev-root-token \
@@ -113,7 +113,7 @@ local PostgreSQL container.
 cd /Users/stefanorocco/apps/domain-agent-framework
 source .venv-3.12/bin/activate
 
-python -m agent_enterprise.executor_service \
+python -m enterprise.executor_service \
   --public-key /tmp/policy.pub \
   --postgres-replay-url postgresql+psycopg://agent:agent@localhost:5432/agent_atomic \
   --postgres-revocation-url postgresql+psycopg://agent:agent@localhost:5432/agent_atomic \

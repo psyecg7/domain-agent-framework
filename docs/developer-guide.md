@@ -1,7 +1,14 @@
 # Developer guide
 
+New to the framework? Read [Build your first agent](first-agent.md) before this
+guide. This page starts where the local example ends: choosing durable storage,
+transport, AI advice, and recovery boundaries.
+
 Start with `agent-app`. It provides one local application object without
-requiring a database, queue, reasoner, or adapter implementation:
+requiring a database, queue, reasoner, or integration package:
+
+Before adding another package, use the [component map](components.md). It
+lists the responsibility and limit of every extra package and reference.
 
 ```python
 from agent_app import AgentApp
@@ -44,12 +51,13 @@ Use the lower-level `Agent(...)` constructor only when you need one of these:
 
 | Need | Add |
 | --- | --- |
-| Survive restart | a `StateStore` adapter such as `agent-postgres` or `agent-delta` |
-| Publish/consume events | an application transport such as `agent-redpanda` |
+| Survive restart | a `StateStore` adapter such as `storage-postgres` or `storage-delta` |
+| Publish/consume events | an application transport such as `transport-redpanda` |
 | Ask an AI for non-authoritative advice | a `Reasoner`; policy still decides |
+| Give an AI reasoner optional related text | `memory-lancedb`; use it only with the advanced raw `Agent` API and keep business facts in the authoritative state store |
 | Ask another domain for a fact | capabilities and ordinary result events |
-| Protect high-risk cross-service effects | `agent-enterprise` Policy/Executor authorization |
-| Safely coordinate several database workers | `agent-postgres` atomic operation/outbox support |
+| Protect high-risk cross-service effects | `enterprise` Policy/Executor authorization |
+| Safely coordinate several database workers | `storage-postgres` atomic operation/outbox support |
 | Call a payment, device, or third-party API | the [external side-effect boundary](external-effect-boundary.md) |
 
 The quickstart API is intentionally local and in-memory. It is not a hidden
@@ -113,4 +121,4 @@ make the provider call atomic. Use one stable operation ID as the provider's
 idempotency key. A lost response after possible acceptance is `UNKNOWN`, not a
 failure or success; reconcile through the provider before retrying, recovering,
 or escalating. See the [external side-effect boundary](external-effect-boundary.md)
-and adopt its `agent-conformance` checks.
+and adopt its `conformance` checks.

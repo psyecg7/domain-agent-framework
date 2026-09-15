@@ -55,13 +55,13 @@ guessing or replaying the command.
 
 ## What the framework provides
 
-[`agent-conformance`](../agent-conformance/README.md) provides test helpers
+[`conformance`](../conformance/README.md) provides test helpers
 that require stable external idempotency keys, `UNKNOWN` after an ambiguous
 transport failure, and reconciliation-driven resolution. They are callable
 checks to run in each domain's CI; they do not choose domain outcome words,
 retry schedules, compensation, or escalation authority.
 
-[`agent-postgres`](../agent-postgres/README.md) provides an optional atomic
+[`storage-postgres`](../storage-postgres/README.md) provides an optional atomic
 operation/outbox transaction for database-backed domains. It makes the durable
 handoff to a provider safe, but cannot make the provider call atomic. Consumers
 and providers must still tolerate duplicate delivery of the stable operation

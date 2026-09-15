@@ -11,7 +11,7 @@ from agent_core import (
 # Infrastructure ports
 from agent_core.ports import PolicyEngine, StateStore
 
-from agent_enterprise.audit import DeltaAuthorizationAuditStore
+from enterprise.audit import DeltaAuthorizationAuditStore
 
 class InMemoryStateStore(StateStore):
     def __init__(self):

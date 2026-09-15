@@ -8,11 +8,11 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-from agent_enterprise import (
+from enterprise import (
     AuthorizedCommandExecutor, DeltaReplayStore, ExecutorAuthorizationVerifier,
     DeltaAuthorizationAuditStore, PolicyAuthorizationIssuer, executor_server, policy_server,
 )
-from agent_enterprise.http_reference import RequestTooLarge, _content_length
+from enterprise.http_reference import RequestTooLarge, _content_length
 
 
 def post(server, payload: dict, headers: dict[str, str] | None = None) -> tuple[int, dict]:

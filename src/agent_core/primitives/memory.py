@@ -1,3 +1,10 @@
+"""Technology-neutral supporting text that a reasoner may retrieve.
+
+Memory is attached to an entity so a MemoryStore can filter context for that
+entity. It is optional and non-authoritative: current business facts belong in
+State or another domain-owned store.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

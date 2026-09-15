@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from agent_app import CapabilityInvoker
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
-from agent_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
+from storage_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
 
 
 class DurableInventoryReleaseAuthority:

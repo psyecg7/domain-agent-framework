@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from agent_core import Agent, Event
-from agent_postgres import PostgresAgentReceiptRunner, PostgresEventReceiptStore, PostgresStateStore
+from storage_postgres import PostgresAgentReceiptRunner, PostgresEventReceiptStore, PostgresStateStore
 
 
 class NoDecisions:

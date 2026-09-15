@@ -1,3 +1,10 @@
+"""Mutable current structured facts for one entity.
+
+`Agent.process()` applies observations to State before policy evaluation. Each
+update increments its local version. Persistence and cross-worker conditional
+writes are responsibilities of the StateStore adapter.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

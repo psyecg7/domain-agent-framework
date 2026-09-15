@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kad-inventory-reference"
+version = "0.1.0"
+description = "Knowledge-aware Inventory reference: evaluable facts plus guarded execution"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "confluent-kafka>=2.3.0",
+    "fastapi>=0.110",
+    "pydantic>=2.0",
+    "sqlalchemy>=2.0",
+]
+
+[project.optional-dependencies]
+test = ["httpx>=0.27", "pytest>=8.0", "pytest-asyncio>=0.23"]
+postgres = ["psycopg[binary]>=3.1"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

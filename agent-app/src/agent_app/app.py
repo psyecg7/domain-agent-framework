@@ -1,4 +1,4 @@
-"""Decorator-oriented local application layer built on domain-agent-core."""
+"""Decorator-oriented local application layer built on agent-core."""
 
 from __future__ import annotations
 

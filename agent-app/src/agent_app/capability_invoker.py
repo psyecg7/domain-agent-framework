@@ -114,7 +114,7 @@ class CapabilityInvoker:
         except ImportError as exc:  # pragma: no cover - depends on optional install
             raise RuntimeError(
                 "jsonschema is required to validate capability input_schema; "
-                "install domain-agent-core[validation]"
+                "install agent-core[validation]"
             ) from exc
         try:
             validate(instance=dict(intent.parameters), schema=dict(capability.input_schema))

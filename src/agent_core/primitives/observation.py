@@ -1,3 +1,10 @@
+"""One normalized fact observed from an Event.
+
+The runtime decomposes an event payload into observations, then applies each
+observation to the target State. This makes the state update step explicit
+without giving observations business-policy authority.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

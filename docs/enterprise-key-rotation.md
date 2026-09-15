@@ -25,7 +25,7 @@ Export only its public key for Executor configuration:
 VAULT_TRANSIT_URL=http://127.0.0.1:8200 VAULT_TRANSIT_TOKEN=dev-root-token \
 python -c '
 from pathlib import Path
-from agent_enterprise import VaultTransitPolicyAuthorizationIssuer
+from enterprise import VaultTransitPolicyAuthorizationIssuer
 issuer = VaultTransitPolicyAuthorizationIssuer(
     vault_url="http://127.0.0.1:8200", token="dev-root-token",
     transit_key="policy-authorization-v2", key_id="local-policy-key-v2",
@@ -41,7 +41,7 @@ Restart Executor with both the old and new public keys. During the overlap it
 will accept valid authorizations from either key ID:
 
 ```bash
-python -m agent_enterprise.executor_service \
+python -m enterprise.executor_service \
   --trusted-public-key local-policy-key=/tmp/policy.pub \
   --trusted-public-key local-policy-key-v2=/tmp/policy-v2.pub \
   --postgres-replay-url postgresql+psycopg://agent:agent@localhost:5432/agent_atomic \
@@ -59,7 +59,7 @@ python -m agent_enterprise.executor_service \
 Restart Policy with the successor Transit key and a new `key_id`:
 
 ```bash
-python -m agent_enterprise.policy_service \
+python -m enterprise.policy_service \
   --public-key-out /tmp/policy-v2.pub \
   --key-id local-policy-key-v2 \
   --vault-url http://127.0.0.1:8200 --vault-token dev-root-token \
@@ -122,7 +122,7 @@ TTL, clock-skew allowance, transport delay, and retry window.
 After the planned overlap has elapsed, restart Executor with only the v2 key:
 
 ```bash
-python -m agent_enterprise.executor_service \
+python -m enterprise.executor_service \
   --trusted-public-key local-policy-key-v2=/tmp/policy-v2.pub \
   --postgres-replay-url postgresql+psycopg://agent:agent@localhost:5432/agent_atomic \
   --postgres-revocation-url postgresql+psycopg://agent:agent@localhost:5432/agent_atomic \

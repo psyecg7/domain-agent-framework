@@ -1,3 +1,10 @@
+"""Boundary for deterministic domain policy evaluation.
+
+Policy reads current State and returns Decisions. When it accepts
+Recommendations, it remains the authority that filters model or heuristic
+advice before an Action can be formed.
+"""
+
 from __future__ import annotations
 
 from typing import Protocol

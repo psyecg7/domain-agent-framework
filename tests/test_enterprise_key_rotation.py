@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from agent_core import Decision, decision_to_action
-from agent_enterprise import AuthorizationError, ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, PolicyAuthorizationIssuer
+from enterprise import AuthorizationError, ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, PolicyAuthorizationIssuer
 
 
 def command() -> ExecutionCommand:

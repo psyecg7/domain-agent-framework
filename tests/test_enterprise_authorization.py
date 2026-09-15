@@ -7,7 +7,7 @@ import pytest
 cryptography = pytest.importorskip("cryptography")
 
 from agent_core import Decision, decision_to_action
-from agent_enterprise import (
+from enterprise import (
     AuthorizationError,
     AuthorizedCommandExecutor,
     ExecutionCommand,
@@ -130,7 +130,7 @@ def test_policy_private_key_round_trips_without_giving_executor_a_private_key_ap
     execution = command()
     assert restored.authorize(execution, audience="order-executor").claims["key_id"] == "policy-2026-01"
 
-    import agent_enterprise.executor_service as executor_service
+    import enterprise.executor_service as executor_service
     assert "private-key" not in executor_service.main.__code__.co_consts
 
 

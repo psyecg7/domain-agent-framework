@@ -1,3 +1,10 @@
+"""Infrastructure boundaries implemented by applications and adapters.
+
+Each port is a small Protocol. The runtime calls a port at a specific lifecycle
+step, while the implementation chooses storage, messaging, AI, or execution
+technology.
+"""
+
 from .action_executor import ActionExecutor
 from .capability_registry import CapabilityRegistry, InMemoryCapabilityRegistry
 from .memory_store import MemoryStore

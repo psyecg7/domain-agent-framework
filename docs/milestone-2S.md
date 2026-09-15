@@ -59,7 +59,7 @@ The minimum Inventory contract discovered is domain-specific:
 ## Durable Inventory evidence reference
 
 The initial contract fixture is now exercised with
-`agent_delta.DeltaReservationEvidenceStore`. Inventory stores evidence by
+`storage_delta.DeltaReservationEvidenceStore`. Inventory stores evidence by
 `operation_id` separately from aggregate state and result-event delivery. A
 restart can therefore answer `EXISTS` for a reservation whose original result
 was not observed by Order; Order remains `UNKNOWN` until it receives and
@@ -76,7 +76,7 @@ interpretation remain the frozen 2S contract.
 
 ## Redpanda transport status
 
-`agent-redpanda` now provides an Event transport/dispatcher that serializes the
+`transport-redpanda` now provides an Event transport/dispatcher that serializes the
 ordinary reconciliation invocation and result events and commits consumer
 offsets only after successful handlers. This establishes an at-least-once
 delivery posture for the adapter; duplicate events remain a domain/process
@@ -84,8 +84,8 @@ concern handled by the existing event and reconciliation identities.
 
 The broker integration tests run in service-backed CI. For local reproduction,
 `docker-compose.redpanda.yml` provides a single-node broker; install
-`./agent-redpanda` and `./agent-delta`, then run them with
-`REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q agent-redpanda/tests/test_reconciliation_integration.py`.
+`./transport-redpanda` and `./storage-delta`, then run them with
+`REDPANDA_BOOTSTRAP_SERVERS=localhost:19092 pytest -q transport-redpanda/tests/test_reconciliation_integration.py`.
 
 ### Broker-run result
 
@@ -134,7 +134,7 @@ skipped integration test is verification debt, not a neutral test exclusion.
 
 ## Durable Order process snapshot reference
 
-`agent_delta.DeltaProcessStore` now persists the frozen Order
+`storage_delta.DeltaProcessStore` now persists the frozen Order
 `PurchaseProcess` snapshot shape—identity, facts, operations, applied event
 IDs, status, and recovery reason—without adding a generic core process model.
 The existing restart/replay and partial-completion assertions run with the

@@ -1,6 +1,6 @@
 from agent_core import Decision, decision_to_action
-from agent_conformance import assert_stale_preconditions_conflict
-from agent_enterprise import (
+from conformance import assert_stale_preconditions_conflict
+from enterprise import (
     AuthorizedCommandExecutor,
     DeltaInventoryReservationHandler,
     ExecutionCommand,

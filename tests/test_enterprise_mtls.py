@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from agent_enterprise import MtlsIdentityError, PolicyAuthorizationIssuer, client_context, policy_server, server_context, verify_peer_identity
+from enterprise import MtlsIdentityError, PolicyAuthorizationIssuer, client_context, policy_server, server_context, verify_peer_identity
 
 
 def certificate_material(tmp_path, name: str, *, dns_name: str, uri: str | None = None, issuer=None):

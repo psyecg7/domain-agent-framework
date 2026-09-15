@@ -1,4 +1,4 @@
-from agent_enterprise import AuthorizationError, ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, PolicyAuthorizationIssuer
+from enterprise import AuthorizationError, ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, PolicyAuthorizationIssuer
 from agent_core import Decision, decision_to_action
 
 

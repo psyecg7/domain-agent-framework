@@ -1,3 +1,10 @@
+"""Boundary for loading and saving current structured entity State.
+
+`Agent.process()` loads a State, applies the event's observations, and saves it
+before policy evaluation. Durability, concurrency control, and transactions are
+properties of the selected adapter rather than this Protocol.
+"""
+
 from __future__ import annotations
 
 from typing import Protocol

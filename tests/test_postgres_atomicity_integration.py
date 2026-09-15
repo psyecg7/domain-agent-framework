@@ -11,8 +11,8 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, delete, inspect, insert, select
 
 from agent_core import Event
-from agent_postgres import PostgresAtomicOperationStore, PostgresEventReceiptStore, PostgresMigrationRunner, migrate_agent_postgres
-from agent_enterprise import PostgresReplayStore, PostgresRevocationStore
+from storage_postgres import PostgresAtomicOperationStore, PostgresEventReceiptStore, PostgresMigrationRunner, migrate_storage_postgres
+from enterprise import PostgresReplayStore, PostgresRevocationStore
 
 
 DATABASE_URL = os.getenv("POSTGRES_ATOMIC_DATABASE_URL")
@@ -150,11 +150,11 @@ def test_postgres_migration_upgrades_a_legacy_outbox_and_allows_ha_leasing() -> 
         Column("status", String(16), nullable=False),
         Column("published_at", DateTime(timezone=True)),
     )
-    runner = PostgresMigrationRunner(DATABASE_URL, component=f"agent_postgres_{prefix}")
+    runner = PostgresMigrationRunner(DATABASE_URL, component=f"storage_postgres_{prefix}")
     legacy.create_all(runner.engine)
     atomic = None
     try:
-        assert migrate_agent_postgres(
+        assert migrate_storage_postgres(
             DATABASE_URL, table_prefix=prefix, state_table=state_table, receipt_table=receipt_table,
         ) == [1, 2]
         atomic = PostgresAtomicOperationStore(DATABASE_URL, table_prefix=prefix)

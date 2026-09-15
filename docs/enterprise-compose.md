@@ -1,7 +1,7 @@
 # Enterprise security integration profile
 
 `docker-compose.enterprise.yml` is an optional **development/staging** profile
-for testing the controls that surround `agent-enterprise`:
+for testing the controls that surround `enterprise`:
 
 | Service | Local endpoint | What it tests |
 | --- | --- | --- |
@@ -77,9 +77,9 @@ It is not a production KMS/HSM, identity plane, or certificate authority:
 
 For production, replace these containers with the organization’s OIDC
 provider, workload-identity/mTLS platform, and KMS/HSM (or a properly operated
-Vault cluster). Configure `agent-enterprise` with shared PostgreSQL replay and
+Vault cluster). Configure `enterprise` with shared PostgreSQL replay and
 revocation stores. Before any Policy or Executor replica starts, run the
-versioned `python -m agent_enterprise.migrate --database-url ...` deployment
+versioned `python -m enterprise.migrate --database-url ...` deployment
 job, then prove these gates in staging:
 
 1. An unauthenticated caller cannot obtain a Policy authorization.
@@ -94,7 +94,7 @@ The Enterprise Policy reference can validate Keycloak JWTs through local JWKS
 verification. Start it with:
 
 ```bash
-python -m agent_enterprise.policy_service \
+python -m enterprise.policy_service \
   --private-key /tmp/policy.pem --public-key-out /tmp/policy.pub \
   --oidc-issuer http://127.0.0.1:8080/realms/domain-agent-development \
   --oidc-audience policy-service --required-scope order:submit
@@ -144,7 +144,7 @@ VAULT_TRANSIT_URL=http://127.0.0.1:8200 VAULT_TRANSIT_TOKEN=dev-root-token \
 The Policy CLI can then sign without a local `--private-key`:
 
 ```bash
-python -m agent_enterprise.policy_service --public-key-out /tmp/policy.pub \
+python -m enterprise.policy_service --public-key-out /tmp/policy.pub \
   --vault-url http://127.0.0.1:8200 --vault-token dev-root-token \
   --vault-transit-key policy-authorization
 ```

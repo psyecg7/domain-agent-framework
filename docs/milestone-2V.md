@@ -72,7 +72,7 @@ sites:
 | Category | Call sites | Migration |
 | --- | --- | --- |
 | (a) Framework default mapping | `src/agent_core/runtime/agent.py` | `decision_to_action` |
-| (b) Decision-based factories | `tests/test_inventory_autonomous_domain.py`; four sites in `tests/test_agent.py`; `tests/test_agent_composition.py`; `tests/test_pharmacy_domain_stress.py`; two sites in `agent-redpanda/tests/test_runtime.py` | `decision_to_action` |
+| (b) Decision-based factories | `tests/test_inventory_autonomous_domain.py`; four sites in `tests/test_agent.py`; `tests/test_agent_composition.py`; `tests/test_pharmacy_domain_stress.py`; two sites in `transport-redpanda/tests/test_runtime.py` | `decision_to_action` |
 | (c) No Decision in scope | None | No discovery |
 
 All category-(b) sites already had a `Decision` in scope and used its entity
@@ -89,7 +89,7 @@ target, so migration did not alter field values or behavior.
   execution to be separately deployed trust domains, with asymmetric signing,
   key provisioning and rotation, and a TOCTOU window derived from actual
   transport behavior. No cryptographic execution-token primitive is added to
-  `agent-core`. The optional `agent-enterprise` reference demonstrates this
+  `agent-core`. The optional `enterprise` reference demonstrates this
   boundary outside core with an Ed25519 Policy private key and Executor public
   key; it still requires separate deployment, durable shared replay storage,
   enterprise OIDC/JWT ingress authorization, service mTLS, and KMS/HSM key

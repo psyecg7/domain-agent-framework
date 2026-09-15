@@ -7,7 +7,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from agent_enterprise import OidcJwtValidator, OidcValidationError
+from enterprise import OidcJwtValidator, OidcValidationError
 
 
 def b64(value: bytes) -> str:

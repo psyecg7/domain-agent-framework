@@ -6,7 +6,7 @@ test proves that the replay primary key arbitrates concurrent workers.
 
 from __future__ import annotations
 
-from agent_enterprise import PostgresReplayStore, PostgresRevocationStore
+from enterprise import PostgresReplayStore, PostgresRevocationStore
 
 
 def test_sql_authorization_stores_survive_restart_and_expire_records(tmp_path) -> None:

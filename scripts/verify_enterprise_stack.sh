@@ -18,7 +18,7 @@ else
   python_bin=python
 fi
 compose=(docker compose -f docker-compose.enterprise.yml)
-run_directory=$(mktemp -d "${TMPDIR:-/tmp}/agent-enterprise-verify.XXXXXX")
+run_directory=$(mktemp -d "${TMPDIR:-/tmp}/enterprise-verify.XXXXXX")
 profile_was_absent=false
 issued_container_files=()
 
@@ -41,8 +41,8 @@ trap cleanup EXIT
 command -v docker >/dev/null || { echo "docker is required" >&2; exit 1; }
 command -v curl >/dev/null || { echo "curl is required" >&2; exit 1; }
 command -v openssl >/dev/null || { echo "openssl is required" >&2; exit 1; }
-"${python_bin}" -c 'import agent_enterprise' >/dev/null || {
-  echo "${python_bin} cannot import agent_enterprise; activate the project virtual environment first" >&2
+"${python_bin}" -c 'import enterprise' >/dev/null || {
+  echo "${python_bin} cannot import enterprise; activate the project virtual environment first" >&2
   exit 1
 }
 

@@ -1,3 +1,10 @@
+"""Boundary for translating a human request into a declarative Intent.
+
+An implementation may be deterministic or model-backed, but it produces a
+request description only. Capability lookup and the target domain's policy
+remain separate authorization steps.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Protocol

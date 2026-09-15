@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scheduler"
+version = "0.3.0"
+description = "In-process delayed-event publisher for agent-core applications"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["agent-core>=0.3.0,<0.4.0"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

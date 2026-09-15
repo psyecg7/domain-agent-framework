@@ -10,7 +10,7 @@ import pytest
 
 from agent_app import CapabilityInvoker, UnknownCapabilityError
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
-from agent_delta import (
+from storage_delta import (
     ApprovalEvidenceUnavailable,
     DeltaComplianceApprovalEvidenceStore,
     DurableComplianceApprovalAuthority,
