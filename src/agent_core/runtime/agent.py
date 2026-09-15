@@ -1,3 +1,12 @@
+"""The technology-neutral coordinator for one event lifecycle.
+
+`Agent.process()` transforms an Event into observations, updates and saves the
+target State, optionally asks a Reasoner for advice, asks deterministic policy
+for Decisions, converts those Decisions into Actions, and optionally delivers
+the Actions to an executor. It owns the sequence, not database, broker, model,
+or domain business semantics.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

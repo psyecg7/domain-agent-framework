@@ -2,7 +2,7 @@
 
 import pytest
 
-from agent_delta import DeltaProcessStore, ProcessStoreUnavailable
+from storage_delta import DeltaProcessStore, ProcessStoreUnavailable
 from test_pharmacy_process_semantics import (
     PurchaseProcess,
     make_process,

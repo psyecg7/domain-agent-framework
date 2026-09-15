@@ -1,3 +1,10 @@
+"""Boundary for optional retrieval of non-authoritative semantic context.
+
+The runtime can search this store before a context-style reasoner runs. Memory
+is supporting text, not current business state, an event log, or an authority
+for a decision.
+"""
+
 from __future__ import annotations
 
 from typing import Protocol

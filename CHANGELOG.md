@@ -1,12 +1,45 @@
 # Changelog
 
+## 0.3.0 — 2026-09-15
+
+### Breaking changes
+
+- Infrastructure packages were renamed to describe their role rather than
+  implying that a database, broker, model provider, or memory store is an
+  agent. Install and import `storage-postgres` / `storage_postgres`,
+  `transport-redpanda` / `transport_redpanda`, `storage-delta` /
+  `storage_delta`, `memory-lancedb` / `memory_lancedb`,
+  `model-openai` / `model_openai`, `model-ollama` /
+  `model_ollama`, and `scheduler` / `scheduler`.
+- `agent-enterprise` / `agent_enterprise` is now `enterprise` / `enterprise`.
+  `domain-agent-conformance` / `agent_conformance` is now `conformance` /
+  `conformance`.
+- Distribution names `domain-agent-core` and `domain-agent-app` are now
+  `agent-core` and `agent-app`. Their Python imports remain `agent_core` and
+  `agent_app` because these packages are the runtime and application APIs used
+  to build an agent.
+
+### Migration
+
+Replace old installation names, editable paths, imports, CI wheel lists, and
+module commands with the new names. For example:
+
+```python
+from storage_postgres import PostgresStateStore
+from transport_redpanda import RedpandaEventTransport
+from memory_lancedb import LanceDBMemoryStore
+```
+
+No compatibility import shims are provided. This makes an incomplete migration
+fail at import time instead of leaving two competing package names in use.
+
 ## 0.2.0 — 2026-09-11
 
 ### Breaking changes
 
 - `CapabilityInvoker`, `Authorizer`, `EventTransport`, and related
   capability-invocation exceptions moved from the removed `agent_application`
-  package to `agent_app`. `domain-agent-core` now distributes only
+  package to `agent_app`. `agent-core` now distributes only
   `agent_core` semantics; application composition belongs to `agent-app`.
 - `ConversationalGateway`, response rendering, and their application transport
   protocols moved from `agent_core` to `agent_app`. Core retains the generic
@@ -14,8 +47,8 @@
 
 ### Added
 
-- `domain-agent-app`: the versioned, local-first public application API.
-- `domain-agent-conformance`: test-only callable assertions, an adoption
+- `agent-app`: the versioned, local-first public application API.
+- `conformance`: test-only callable assertions, an adoption
   template, and a CI-checkable conformance discipline for side-effecting
   domains.
 - Delta-backed reference persistence for effect evidence and process state,

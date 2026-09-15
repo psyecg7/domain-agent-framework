@@ -14,17 +14,17 @@ GitHub's short-lived OIDC identity. It has no stored package-index token.
 Do this once for every project below in a TestPyPI account you control:
 
 ```text
-domain-agent-core
-domain-agent-app
-domain-agent-conformance
-agent-delta
-agent-enterprise
-agent-lancedb
-agent-ollama
-agent-openai
-agent-postgres
-agent-redpanda
-agent-scheduler
+agent-core
+agent-app
+conformance
+storage-delta
+enterprise
+memory-lancedb
+model-ollama
+model-openai
+storage-postgres
+transport-redpanda
+scheduler
 ```
 
 For each project, configure a normal or pending GitHub Trusted Publisher with:
@@ -55,13 +55,13 @@ python -m pip install --upgrade pip
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  domain-agent-app==0.2.0
+  agent-app==0.3.0
 python -c 'import agent_app, agent_core; print(agent_app.__name__)'
 ```
 
-Use the release candidate version in place of `0.2.0` when validating a later
+Use the release candidate version in place of `0.3.0` when validating a later
 release. Also install representative adapter combinations—such as
-`agent-postgres` and `agent-redpanda`—because these validate cross-package
+`storage-postgres` and `transport-redpanda`—because these validate cross-package
 version constraints.
 
 ## Promoting to PyPI

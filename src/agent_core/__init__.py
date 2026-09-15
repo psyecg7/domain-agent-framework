@@ -1,3 +1,10 @@
+"""Public technology-neutral API for the domain-agent runtime.
+
+Applications import the shared event, state, policy, decision, action, and
+capability vocabulary from here. Infrastructure remains behind ports and
+adapters; this module performs no I/O or domain-specific business work.
+"""
+
 from .primitives.action import Action, ActionConstructionError, decision_to_action
 from .primitives.capability import Capability
 from .primitives.decision import Decision

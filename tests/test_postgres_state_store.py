@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 from agent_core import Agent, Event, State
-from agent_postgres import ConcurrentStateUpdate, PostgresStateStore, StateStoreUnavailable
+from storage_postgres import ConcurrentStateUpdate, PostgresStateStore, StateStoreUnavailable
 
 
 def test_postgres_state_store_distinguishes_duplicate_creation_from_outage(tmp_path, monkeypatch) -> None:

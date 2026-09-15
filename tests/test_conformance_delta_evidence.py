@@ -1,9 +1,9 @@
-from agent_conformance import (
+from conformance import (
     assert_duplicate_operation_is_idempotent,
     assert_reconciliation_outcome,
     assert_restart_reconciles_effect,
 )
-from agent_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
+from storage_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
 
 
 def test_delta_reservation_evidence_meets_generic_operation_conformance(tmp_path) -> None:

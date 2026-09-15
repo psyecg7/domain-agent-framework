@@ -12,7 +12,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table, insert, select
 import pytest
 
 from agent_core import Event
-from agent_postgres import OperationIdentityMismatch, PostgresAtomicOperationStore
+from storage_postgres import OperationIdentityMismatch, PostgresAtomicOperationStore
 
 
 def make_store(tmp_path):

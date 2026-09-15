@@ -1,3 +1,10 @@
+"""Declarative description of an operation a domain is willing to receive.
+
+Capabilities support discovery through an Intent and registry. They contain no
+executable handler and do not authorize the request; the owning domain performs
+validation and policy evaluation after receiving an invocation event.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

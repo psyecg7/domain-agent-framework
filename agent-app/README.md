@@ -1,7 +1,7 @@
 # agent-app
 
 `agent-app` is the local-first developer entry point for
-`domain-agent-core`. It composes the existing safe runtime; it does not add a
+`agent-core`. It composes the existing safe runtime; it does not add a
 second policy, action, or authority model.
 
 It is the framework's ergonomic, versioned application API: `agent-core`

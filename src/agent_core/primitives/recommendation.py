@@ -1,3 +1,10 @@
+"""Non-authoritative advice returned by a Reasoner.
+
+Recommendations can contain a type, rationale, parameters, and confidence.
+They are inputs to deterministic policy evaluation and are never executable
+instructions by themselves.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

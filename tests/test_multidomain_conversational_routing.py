@@ -14,7 +14,7 @@ from agent_core import (
     InMemoryCapabilityRegistry,
     State,
 )
-from agent_ollama import OllamaIntentInterpreter
+from model_ollama import OllamaIntentInterpreter
 
 
 class FakeClient:

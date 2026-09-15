@@ -1,3 +1,11 @@
+"""The side-effect instruction produced from a Decision.
+
+An Action is deliberately not publicly constructible. `decision_to_action()`
+requires a Decision and copies its entity target, preventing a Recommendation
+or arbitrary target from becoming an Action by accident. The executor still
+owns the actual side effect and its distributed-safety contract.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

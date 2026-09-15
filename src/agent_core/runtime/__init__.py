@@ -1,3 +1,5 @@
+"""Runtime entry points that compose core primitives through ports."""
+
 from .agent import Agent, AgentResult
 
 __all__ = [

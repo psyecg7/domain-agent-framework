@@ -10,25 +10,25 @@ developer checkout can hide.
 
 | Package | Public role | Compatible release line |
 | --- | --- | --- |
-| `domain-agent-core` | Stable runtime semantics | `0.2.x` |
-| `domain-agent-app` | Local-first ergonomic, invocation, and conversational-composition API | Core `>=0.2.0,<0.3.0` |
-| `domain-agent-conformance` | Test-only assertions/templates | Independent runtime dependency set |
-| `agent-delta` | Delta persistence adapter | Core `>=0.2.0,<0.3.0` |
-| `agent-enterprise` | Cross-service authorization reference | Core, Delta, Postgres `>=0.2.0,<0.3.0` |
-| `agent-postgres` | Optional adapter: state, conditional writes, and atomic operation/outbox support | Core `>=0.2.0,<0.3.0` |
-| `agent-lancedb`, `agent-ollama`, `agent-openai`, `agent-redpanda`, `agent-scheduler` | Optional adapters | Core `>=0.2.0,<0.3.0` |
+| `agent-core` | Stable runtime semantics | `0.3.x` |
+| `agent-app` | Local-first ergonomic, invocation, and conversational-composition API | Core `>=0.3.0,<0.4.0` |
+| `conformance` | Test-only assertions/templates | Independent runtime dependency set |
+| `storage-delta` | Delta durable storage | Core `>=0.3.0,<0.4.0` |
+| `enterprise` | Cross-service authorization reference | Core, Delta, Postgres `>=0.3.0,<0.4.0` |
+| `storage-postgres` | PostgreSQL storage, conditional writes, and atomic operation/outbox support | Core `>=0.3.0,<0.4.0` |
+| `memory-lancedb`, `model-ollama`, `model-openai`, `transport-redpanda`, `scheduler` | Optional memory, model, transport, and scheduling packages | Core `>=0.3.0,<0.4.0` |
 
 ## Versioning rules
 
 Each distributable package has its own version. `agent-app` is a public API,
-not an unversioned convenience shim. Adapters and `agent-conformance` are also
+not an unversioned convenience shim. Adapters and `conformance` are also
 versioned artifacts; their compatibility requirements are declared in their
 own `pyproject.toml` files.
 
 Before 1.0, a breaking public API change advances the minor line (for example,
 `0.1` to `0.2`). Backward-compatible fixes advance the patch version. A
 dependent package must constrain its framework dependency to the compatible
-minor line, as `>=0.2.0,<0.3.0` does today. The conformance package deliberately
+minor line, as `>=0.3.0,<0.4.0` does today. The conformance package deliberately
 has no runtime dependency on the other packages.
 
 ## Validation tiers

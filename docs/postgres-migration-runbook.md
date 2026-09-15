@@ -1,15 +1,15 @@
 # PostgreSQL migration runbook
 
-Use this procedure before deploying a version that changes an `agent-postgres`
-or `agent-enterprise` PostgreSQL schema. Migrations are a deployment operation:
+Use this procedure before deploying a version that changes an `storage-postgres`
+or `enterprise` PostgreSQL schema. Migrations are a deployment operation:
 do not let application replicas race to create or alter tables at startup.
 
 ## Scope
 
 The current migration commands manage:
 
-- `agent-postgres`: state, atomic-operation, outbox, and event-receipt tables;
-- `agent-enterprise`: authorization replay and decision-revocation tables.
+- `storage-postgres`: state, atomic-operation, outbox, and event-receipt tables;
+- `enterprise`: authorization replay and decision-revocation tables.
 
 They record applied versions in `agent_schema_migrations`. Version records are
 scoped by the configured table prefix or authorization table pair, so multiple
@@ -29,10 +29,10 @@ independent deployments can share one database safely.
 
 ## Apply the adapter migration
 
-Run this once per configured `agent-postgres` table prefix:
+Run this once per configured `storage-postgres` table prefix:
 
 ```bash
-python -m agent_postgres.migrate \
+python -m storage_postgres.migrate \
   --database-url "$POSTGRES_DATABASE_URL" \
   --table-prefix agent_atomic \
   --state-table agent_states \
@@ -49,7 +49,7 @@ Before starting Policy or Executor replicas that use PostgreSQL replay or
 revocation stores, run:
 
 ```bash
-python -m agent_enterprise.migrate \
+python -m enterprise.migrate \
   --database-url "$POSTGRES_DATABASE_URL" \
   --replay-table agent_authorization_replay \
   --revocation-table agent_authorization_revocations

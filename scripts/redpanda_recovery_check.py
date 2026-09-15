@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from agent_core import Event
-from agent_redpanda import RedpandaConsumer, RedpandaEventDispatcher, RedpandaEventTransport, RedpandaProducer
+from transport_redpanda import RedpandaConsumer, RedpandaEventDispatcher, RedpandaEventTransport, RedpandaProducer
 
 fixture_spec = importlib.util.spec_from_file_location(
     "_recovery_order_process", ROOT / "tests" / "test_pharmacy_reconciliation.py"

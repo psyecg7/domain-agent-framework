@@ -1,3 +1,9 @@
+"""A lightweight identity and attributes value for a domain entity.
+
+Entity is descriptive only. Mutable current facts live in State, and an adapter
+owns persistence when an application needs it.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

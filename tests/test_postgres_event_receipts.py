@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, insert, select
 
-from agent_postgres import PostgresEventReceiptStore
+from storage_postgres import PostgresEventReceiptStore
 
 
 def _effects_table(store: PostgresEventReceiptStore) -> Table:

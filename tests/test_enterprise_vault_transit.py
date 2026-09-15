@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agent_core import Decision, decision_to_action
-from agent_enterprise import ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, VaultTransitPolicyAuthorizationIssuer
+from enterprise import ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, VaultTransitPolicyAuthorizationIssuer
 
 
 class Response:
@@ -28,7 +28,7 @@ def test_vault_transit_issuer_signs_without_a_local_policy_private_key(monkeypat
         signature = key.sign(base64.b64decode(payload["input"]))
         return Response({"data": {"signature": f"vault:v1:{base64.b64encode(signature).decode()}"}})
 
-    monkeypatch.setattr("agent_enterprise.vault_transit.urlopen", vault)
+    monkeypatch.setattr("enterprise.vault_transit.urlopen", vault)
     issuer = VaultTransitPolicyAuthorizationIssuer(vault_url="https://vault.example", token="restricted", transit_key="policy", key_id="vault-policy-v1", issuer="policy")
     decision = Decision("ORD-1", "order", "CREATE", "HIGH", "approved")
     action = decision_to_action(decision, "CREATE_ORDER", parameters={"quantity": 1})
@@ -50,8 +50,8 @@ def test_vault_transit_retries_only_transient_failures(monkeypatch) -> None:
             raise HTTPError("https://vault.example", 503, "unavailable", {}, None)
         return Response({"data": {"latest_version": 1, "keys": {"1": {"public_key": base64.b64encode(public).decode()}}}})
 
-    monkeypatch.setattr("agent_enterprise.vault_transit.urlopen", vault)
-    monkeypatch.setattr("agent_enterprise.vault_transit.time.sleep", lambda _: None)
+    monkeypatch.setattr("enterprise.vault_transit.urlopen", vault)
+    monkeypatch.setattr("enterprise.vault_transit.time.sleep", lambda _: None)
     issuer = VaultTransitPolicyAuthorizationIssuer(
         vault_url="https://vault.example", token="restricted", transit_key="policy",
         key_id="vault-policy-v1", issuer="policy", retry_backoff_seconds=0,

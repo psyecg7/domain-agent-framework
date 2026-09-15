@@ -1,3 +1,10 @@
+"""Read-only inputs supplied to a context-style Reasoner.
+
+It combines current State, observations from the incoming Event, optional
+memory matches, and metadata. The reasoner may advise from this context but
+cannot mutate state or authorize an Action through it.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

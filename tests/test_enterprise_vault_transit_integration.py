@@ -5,7 +5,7 @@ import os
 import pytest
 
 from agent_core import Decision, decision_to_action
-from agent_enterprise import ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, VaultTransitPolicyAuthorizationIssuer
+from enterprise import ExecutionCommand, ExecutorAuthorizationVerifier, InMemoryReplayStore, VaultTransitPolicyAuthorizationIssuer
 
 URL, TOKEN = os.getenv("VAULT_TRANSIT_URL"), os.getenv("VAULT_TRANSIT_TOKEN")
 pytestmark = pytest.mark.skipif(not URL or not TOKEN, reason="set VAULT_TRANSIT_URL and VAULT_TRANSIT_TOKEN to run real Vault Transit integration")

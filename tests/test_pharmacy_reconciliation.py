@@ -5,7 +5,7 @@ from typing import Any
 import inspect
 
 from agent_app import CapabilityInvoker
-from agent_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
+from storage_delta import DeltaReservationEvidenceStore, InventoryReservationAuthority
 from agent_core import Capability, Event, InMemoryCapabilityRegistry, Intent
 
 

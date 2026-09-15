@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-from agent_enterprise import OidcJwtValidator
+from enterprise import OidcJwtValidator
 
 
 ISSUER = os.getenv("KEYCLOAK_OIDC_ISSUER")

@@ -1,3 +1,10 @@
+"""A declarative request for a capability, never an executable Action.
+
+An application can resolve an Intent against advertised Capabilities and emit
+an invocation event. The receiving domain remains responsible for policy and
+execution.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

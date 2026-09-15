@@ -15,27 +15,27 @@ jobs:
       matrix:
         include:
           - directory: .
-            project: domain-agent-core
+            project: agent-core
           - directory: agent-app
-            project: domain-agent-app
-          - directory: agent-conformance
-            project: domain-agent-conformance
-          - directory: agent-delta
-            project: agent-delta
-          - directory: agent-enterprise
-            project: agent-enterprise
-          - directory: agent-lancedb
-            project: agent-lancedb
-          - directory: agent-ollama
-            project: agent-ollama
-          - directory: agent-openai
-            project: agent-openai
-          - directory: agent-postgres
-            project: agent-postgres
-          - directory: agent-redpanda
-            project: agent-redpanda
-          - directory: agent-scheduler
-            project: agent-scheduler
+            project: agent-app
+          - directory: conformance
+            project: conformance
+          - directory: storage-delta
+            project: storage-delta
+          - directory: enterprise
+            project: enterprise
+          - directory: memory-lancedb
+            project: memory-lancedb
+          - directory: model-ollama
+            project: model-ollama
+          - directory: model-openai
+            project: model-openai
+          - directory: storage-postgres
+            project: storage-postgres
+          - directory: transport-redpanda
+            project: transport-redpanda
+          - directory: scheduler
+            project: scheduler
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,17 +62,17 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - domain-agent-core
-          - domain-agent-app
-          - domain-agent-conformance
-          - agent-delta
-          - agent-enterprise
-          - agent-lancedb
-          - agent-ollama
-          - agent-openai
-          - agent-postgres
-          - agent-redpanda
-          - agent-scheduler
+          - agent-core
+          - agent-app
+          - conformance
+          - storage-delta
+          - enterprise
+          - memory-lancedb
+          - model-ollama
+          - model-openai
+          - storage-postgres
+          - transport-redpanda
+          - scheduler
     steps:
       - uses: actions/download-artifact@v4
         with:

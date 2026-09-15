@@ -1,3 +1,10 @@
+"""A deterministic domain judgment that may be converted into an Action.
+
+A Decision records the target entity, decision type, severity, reason, and a
+stable ID. It is the authority-bearing input required by `decision_to_action`;
+Recommendations never take its place.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

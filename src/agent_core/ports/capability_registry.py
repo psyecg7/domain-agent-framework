@@ -1,3 +1,10 @@
+"""Discovery boundary for declarative domain capabilities.
+
+A registry matches an Intent to advertised Capability descriptions. Matching
+does not validate, authorize, invoke, or execute the capability. Applications
+turn a selected match into an event-driven request.
+"""
+
 from __future__ import annotations
 
 from typing import Protocol, Sequence

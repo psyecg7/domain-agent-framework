@@ -1,3 +1,10 @@
+"""Small technology-neutral values used throughout the agent lifecycle.
+
+These values describe events, current state, advice, policy decisions, actions,
+and discovery contracts. They do not open connections, invoke models, or embed
+business rules.
+"""
+
 from .action import Action
 from .capability import Capability
 from .decision import Decision

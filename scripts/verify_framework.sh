@@ -76,6 +76,7 @@ REDPANDA_BOOTSTRAP_SERVERS='localhost:19092' \
   "${python_bin}" -m pytest -q \
     tests/test_postgres_atomicity_integration.py \
     tests/test_postgres_redpanda_receipt_integration.py \
-    agent-redpanda/tests/test_reconciliation_integration.py
+    transport-redpanda/tests/test_reconciliation_integration.py \
+    examples/kad-inventory/tests/test_postgres_order_protocol_integration.py
 
 echo "PASS: deterministic and Redpanda/PostgreSQL infrastructure checks completed."

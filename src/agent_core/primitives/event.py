@@ -1,3 +1,10 @@
+"""Immutable input to one agent lifecycle run.
+
+An Event says what happened to which entity and carries an event ID, payload,
+optional lineage metadata, and optional idempotency key. `Agent.process()`
+turns its payload into observations before updating State.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

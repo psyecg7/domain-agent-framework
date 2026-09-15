@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from agent_enterprise import (
+from enterprise import (
     AuthorizedCommandExecutor, ExecutorAuthorizationVerifier, InMemoryReplayStore,
     OidcJwtValidator, VaultTransitPolicyAuthorizationIssuer, client_context,
     executor_server, policy_server, server_context,

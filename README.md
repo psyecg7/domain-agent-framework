@@ -6,6 +6,89 @@ that can approve decisions and side effects. It is a small, generic core for
 building domain agents without embedding domain-specific business logic in the
 framework itself.
 
+## How the pieces fit together
+
+Start with one local Python application. It receives an event, remembers the
+latest facts, applies your Python rule, and runs a handler only when the rule
+allows it.
+
+```text
+your application
+    │
+    ├── agent-app: the API you write
+    │
+    └── agent-core: Event → State → Policy → Decision → Action
+                                      │
+                                      └── your Python rule decides
+```
+
+That is the whole framework for a first application. Use `agent-app`; it
+includes an in-memory state store and local action handlers.
+
+Only two framework packages begin with `agent-`: `agent-core` is the runtime
+and `agent-app` is the Python API you use to build an application. They are
+libraries, not extra agents. An Order application or Inventory application you
+build is an agent.
+
+Every optional package starts with the job it performs: `storage-` keeps
+authoritative data, `transport-` moves events, `memory-` searches supporting
+text, and `model-` asks an AI for advice. `enterprise` demonstrates a separate
+Policy/Executor security boundary; `scheduler` emits local delayed events;
+and `conformance` is test-only. See [Ports and adapters](docs/ports-and-adapters.md)
+for the plain-language explanation.
+
+```python
+from agent_app import AgentApp
+from agent_core import Event
+
+app = AgentApp()
+
+@app.policy("measurement.received")
+def check_temperature(state):
+    if state.values.get("temperature", 0) > 40:
+        return app.decide("NOTIFY_OPERATOR", reason="temperature is too high")
+
+@app.action("NOTIFY_OPERATOR")
+def notify(action):
+    print(f"Alert: {action.entity_id}")
+
+app.process(Event("measurement.received", "sensor-1", "sensor", {"temperature": 42}))
+```
+
+There are only four concepts to learn:
+
+| Component | Meaning |
+| --- | --- |
+| Event | An input, such as “a measurement arrived.” |
+| State | The latest facts about one entity. |
+| Policy | Your Python rule that decides what is allowed. |
+| Action | Work permitted by that policy. |
+
+The remaining packages solve separate problems. Add one only when the problem
+exists:
+
+| Problem | Add |
+| --- | --- |
+| State must survive restart or be shared by workers | `storage-postgres` |
+| Two services need to exchange events | `transport-redpanda` |
+| An AI should suggest ideas | `model-openai` or `model-ollama` |
+| That AI needs related notes/documents | `memory-lancedb` |
+| Policy and execution run in different trust domains | `enterprise` |
+
+LanceDB is only the fourth optional row. It searches notes and documents for an
+AI reasoner. It never holds current stock, order status, payment results, or
+other business truth.
+
+Read [Build your first agent](docs/first-agent.md) for the same flow with a
+slower explanation. The [component map](docs/components.md) explains the
+optional packages after the local version makes sense.
+
+The [documentation map](docs/README.md) groups every guide by the question it
+answers.
+
+<details>
+<summary>Detailed reference, production guidance, and architecture evidence</summary>
+
 ## What this framework is
 
 This is not an LLM workflow engine. It is a disciplined event-driven interaction
@@ -18,6 +101,20 @@ The package in `agent_core` defines the minimal conceptual model for a generic a
 Event → Observation → State → Reasoning → Recommendation → Policy → Decision → Action
 
 It is intentionally neutral. The core is not tied to ecommerce, pharmacy, inventory, returns, or any other specific domain. It can be used for banking, logistics, manufacturing, IoT, cybersecurity, finance, data products, and many other scenarios.
+
+## Core reference
+
+The core concepts each have a focused reference page:
+
+- [Lifecycle](docs/core/lifecycle.md): what `Agent.process(event)` does.
+- [State and storage](docs/core/state-and-storage.md): current business facts and the storage boundary.
+- [Policy and reasoning](docs/core/policy-and-reasoning.md): AI advice versus deterministic authority.
+- [Decisions and actions](docs/core/decisions-and-actions.md): how authorized actions are formed and executed.
+- [Events and capabilities](docs/core/events-and-capabilities.md): communicating across domains through events.
+- [Memory and LanceDB](docs/core/memory.md): optional semantic context, not business truth.
+- [Ports](docs/core/ports.md): the adapter interfaces.
+
+See the [core reference index](docs/core/README.md) for the recommended reading order.
 
 ## Start here
 
@@ -32,6 +129,11 @@ surface most developers use, and **adapters** provide durable state, transport,
 models, and enterprise infrastructure. `agent-app` is not a second runtime or
 a disposable shim; it is the public local-first application API.
 
+If you are unsure which package to use, read the [component map](docs/components.md).
+It explains what each component owns, what it deliberately does not own, and
+which components to add for storage, Kafka, AI advice, multi-worker database
+work, enterprise execution, or CI conformance checks.
+
 Capability invocation is application composition: import `CapabilityInvoker`
 from `agent_app`, not `agent_core`. It resolves a registered Intent and
 publishes one Event; it never calls a target Agent directly.
@@ -40,7 +142,7 @@ Conversational routing and response rendering are application composition too:
 import `ConversationalGateway` and `DeterministicResponseInterpreter` from
 `agent_app`, not `agent_core`.
 
-[`agent-conformance`](agent-conformance/README.md) is a separate test-only
+[`conformance`](conformance/README.md) is a separate test-only
 package. It turns the demonstrated operation, outbox, and reconciliation
 patterns into reusable CI assertions without adding runtime primitives. It
 currently checks stable-operation and duplicate-delivery idempotency, restart
@@ -55,8 +157,8 @@ teams invoke its checks from their own tests. It has no runtime dependency on
 applications, or adapter-only domain code.
 
 To adopt those checks in a side-effecting domain, start from the
-[conformance template](agent-conformance/templates/side_effect_conformance.py)
-and its [adoption checklist](agent-conformance/README.md#adopt-it-in-a-domain).
+[conformance template](conformance/templates/side_effect_conformance.py)
+and its [adoption checklist](conformance/README.md#adopt-it-in-a-domain).
 The repository also runs the helper package and its Delta reference separately
 in [the conformance CI workflow](.github/workflows/conformance.yml).
 
@@ -83,6 +185,11 @@ For payment providers, devices, or third-party APIs, also follow the
 [external side-effect boundary](docs/external-effect-boundary.md): the
 framework requires stable idempotency identity and reconciliation, not guessed
 retries after a lost provider result.
+
+For a runnable, domain-owned example of an AI proposal evaluated against a
+versioned Inventory fact and then guarded again at execution, see the
+[knowledge-aware Inventory reference](examples/kad-inventory/README.md). It
+is deliberately an application reference, not a new `agent-core` primitive.
 
 For a local prototype, you need one app, one policy, and one event:
 
@@ -147,7 +254,7 @@ The checks establish authority boundaries—not a claim that prompting alone
 makes a model secure.
 
 For a separately deployed Policy service and Executor service, the optional
-[`agent-enterprise`](agent-enterprise/README.md) reference uses an asymmetric
+[`enterprise`](enterprise/README.md) reference uses an asymmetric
 Ed25519 authorization. Policy holds the private key; Executor holds only the
 public key and verifies a short-lived, replay-protected authorization bound to
 the Decision ID, action target/type, parameters, idempotency key, and executor
@@ -246,7 +353,7 @@ Independent domain agents compose through ordinary `Event` values. An action may
 
 An agent may expose immutable, declarative `Capability` objects through `Agent.capabilities()`. An `Intent` describes a requested operation, and `CapabilityRegistry` can discover matching capabilities. Discovery does not authorize or execute anything: invocation remains an event-driven request, and the target agent retains authority over its own state, policy, decisions, and actions.
 
-The optional conversational boundary in `agent-ollama` translates natural language into an `Intent` through `IntentInterpreter`. It cannot invent capabilities or call agents. A deterministic application-layer gateway resolves exactly one registered capability before emitting an event; unknown or ambiguous matches stop safely.
+The optional conversational boundary in `model-ollama` translates natural language into an `Intent` through `IntentInterpreter`. It cannot invent capabilities or call agents. A deterministic application-layer gateway resolves exactly one registered capability before emitting an event; unknown or ambiguous matches stop safely.
 
 ## Multi-domain conversational routing
 
@@ -884,7 +991,7 @@ Event durability means an event envelope was persisted or delivered; it does not
 
 `agent-core` was unchanged. Existing `Event`, `Intent`, `Capability`,
 `Decision`, `Action`, and application-level ledgers express the observed
-semantics. The optional `agent-postgres` atomic operation/outbox adapter adds a
+semantics. The optional `storage-postgres` atomic operation/outbox adapter adds a
 transactional infrastructure path without choosing process, idempotency, or
 reconciliation semantics for a domain. A generic core execution store,
 idempotency manager, or reconciliation primitive would still prematurely choose
@@ -905,9 +1012,9 @@ no reusable core execution abstraction is.
 This framework is intentionally technology-independent. It uses only Python
 standard-library types and explicit interfaces in `agent-core`. Application
 composition, conformance checks, and infrastructure adapters live in separate
-packages: `agent-app`, `agent-conformance`, `agent-redpanda`, `agent-delta`,
-`agent-postgres`, `agent-lancedb`, `agent-ollama`, `agent-openai`,
-`agent-scheduler`, and `agent-enterprise`.
+packages: `agent-app`, `conformance`, `transport-redpanda`, `storage-delta`,
+`storage-postgres`, `memory-lancedb`, `model-ollama`, `model-openai`,
+`scheduler`, and `enterprise`.
 
 Future adapters may integrate:
 
@@ -920,3 +1027,5 @@ Future adapters may integrate:
 - Kafka
 
 Those integrations belong in separate adapter layers, not in the core runtime.
+
+</details>

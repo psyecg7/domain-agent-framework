@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, MetaData, String, Table, inspect
 
-from agent_enterprise import migrate_enterprise_authorization
-from agent_postgres import PostgresAtomicOperationStore, PostgresMigrationRunner, SchemaMigration, migrate_agent_postgres
+from enterprise import migrate_enterprise_authorization
+from storage_postgres import PostgresAtomicOperationStore, PostgresMigrationRunner, SchemaMigration, migrate_storage_postgres
 
 
 def test_migration_runner_records_each_version_once(tmp_path) -> None:
@@ -45,10 +45,10 @@ def test_migration_upgrades_a_legacy_outbox_without_lease_columns(tmp_path) -> N
     engine = create_engine(database_url)
     metadata.create_all(engine)
 
-    assert migrate_agent_postgres(database_url, table_prefix="legacy") == [1, 2]
+    assert migrate_storage_postgres(database_url, table_prefix="legacy") == [1, 2]
     columns = {column["name"] for column in inspect(engine).get_columns("legacy_outbox")}
     assert {"lease_owner", "lease_expires_at", "publish_attempts"} <= columns
-    assert migrate_agent_postgres(database_url, table_prefix="legacy") == []
+    assert migrate_storage_postgres(database_url, table_prefix="legacy") == []
     # The current adapter can use the migrated deployment schema.
     assert PostgresAtomicOperationStore(database_url, table_prefix="legacy").outbox.name == "legacy_outbox"
 
@@ -61,5 +61,5 @@ def test_enterprise_migration_records_replay_and_revocation_schema(tmp_path) -> 
 
 def test_independently_named_adapter_schemas_have_independent_versions(tmp_path) -> None:
     database_url = f"sqlite:///{tmp_path / 'multiple.db'}"
-    assert migrate_agent_postgres(database_url, table_prefix="orders") == [1, 2]
-    assert migrate_agent_postgres(database_url, table_prefix="inventory") == [1, 2]
+    assert migrate_storage_postgres(database_url, table_prefix="orders") == [1, 2]
+    assert migrate_storage_postgres(database_url, table_prefix="inventory") == [1, 2]
