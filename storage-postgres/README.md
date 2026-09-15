@@ -91,7 +91,7 @@ that claim in a deployment.
 Run the cross-worker proof with the repository's local Compose stack:
 
 ```bash
-docker compose -f docker-compose.redpanda.yml up -d postgres
+docker compose -f docker-compose.infra.yml up -d postgres
 python -m pip install 'psycopg[binary]'
 POSTGRES_ATOMIC_DATABASE_URL='postgresql+psycopg://agent:agent@localhost:5432/agent_atomic' \
   pytest -q tests/test_postgres_atomicity_integration.py

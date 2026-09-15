@@ -14,7 +14,7 @@ else
   python_bin=python
 fi
 
-compose=(docker compose -f docker-compose.redpanda.yml)
+compose=(docker compose -f docker-compose.infra.yml)
 started_stack=false
 
 cleanup() {

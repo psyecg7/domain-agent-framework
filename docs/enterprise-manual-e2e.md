@@ -21,7 +21,7 @@ password used below are intentionally disposable.
 From the repository root, create and start the local services:
 
 ```bash
-docker compose -f docker-compose.redpanda.yml up -d
+docker compose -f docker-compose.infra.yml up -d
 docker compose -f docker-compose.enterprise.yml up -d
 
 source .venv-3.12/bin/activate

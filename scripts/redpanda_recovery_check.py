@@ -95,7 +95,7 @@ finally:
     first.close()
 
 subprocess.run(
-    ["docker", "compose", "-f", str(ROOT / "docker-compose.redpanda.yml"), "restart", "redpanda"],
+    ["docker", "compose", "-f", str(ROOT / "docker-compose.infra.yml"), "restart", "redpanda"],
     cwd=ROOT,
     check=True,
 )
