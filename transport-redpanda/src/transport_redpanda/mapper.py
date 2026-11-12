@@ -7,6 +7,15 @@ from agent_core import Event
 
 
 class RedpandaEventMapper:
+    """Map the language-neutral event-envelope v1 to and from ``Event``.
+
+    New records carry ``protocol_version: 1``. Records without that field are
+    accepted as the pre-protocol legacy shape so producers can migrate
+    independently. An explicitly unsupported version is rejected.
+    """
+
+    PROTOCOL_VERSION = 1
+
     def __init__(
         self,
         *,
@@ -16,6 +25,7 @@ class RedpandaEventMapper:
         event_id_field: str = "event_id",
         timestamp_field: str = "occurred_at",
         source_field: str = "source",
+        protocol_version_field: str = "protocol_version",
     ) -> None:
         self.event_type_field = event_type_field
         self.entity_id_field = entity_id_field
@@ -23,12 +33,16 @@ class RedpandaEventMapper:
         self.event_id_field = event_id_field
         self.timestamp_field = timestamp_field
         self.source_field = source_field
+        self.protocol_version_field = protocol_version_field
 
     def from_record(self, record: dict[str, Any], *, source: str | None = None) -> Event:
         if not isinstance(record, dict):
             raise TypeError("Redpanda record must be a dictionary")
 
         payload = dict(record)
+        protocol_version = payload.get(self.protocol_version_field)
+        if protocol_version is not None and protocol_version != self.PROTOCOL_VERSION:
+            raise ValueError(f"Unsupported event protocol version: {protocol_version!r}")
 
         event_type = payload.get(self.event_type_field)
         entity_id = payload.get(self.entity_id_field)
@@ -57,6 +71,7 @@ class RedpandaEventMapper:
         payload.pop(self.event_id_field, None)
         payload.pop(self.timestamp_field, None)
         payload.pop(self.source_field, None)
+        payload.pop(self.protocol_version_field, None)
         payload.pop("metadata", None)
         payload.pop("idempotency_key", None)
         payload.pop("_transport", None)
@@ -89,6 +104,7 @@ class RedpandaEventMapper:
 
     def to_record(self, event: Event) -> dict[str, Any]:
         payload = dict(event.payload)
+        payload[self.protocol_version_field] = self.PROTOCOL_VERSION
         payload[self.event_type_field] = event.event_type
         payload[self.entity_id_field] = event.entity_id
         payload[self.entity_type_field] = event.entity_type

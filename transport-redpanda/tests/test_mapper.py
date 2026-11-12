@@ -76,3 +76,47 @@ def test_mapper_round_trips_idempotency_key() -> None:
 
     assert event.idempotency_key == "stock-change-1"
     assert mapper.to_record(event)["idempotency_key"] == "stock-change-1"
+
+
+def test_mapper_emits_v1_protocol_and_rejects_an_unknown_explicit_version() -> None:
+    mapper = RedpandaEventMapper()
+    event = mapper.from_record({
+        "event_id": "evt-1", "event_type": "inventory.stock_changed",
+        "entity_id": "sku-42", "entity_type": "inventory_item",
+        "occurred_at": "2024-02-01T10:15:00+00:00",
+    })
+
+    assert mapper.to_record(event)["protocol_version"] == 1
+
+    try:
+        mapper.from_record({
+            "protocol_version": 2,
+            "event_id": "evt-2", "event_type": "inventory.stock_changed",
+            "entity_id": "sku-42", "entity_type": "inventory_item",
+            "occurred_at": "2024-02-01T10:15:00+00:00",
+        })
+        raise AssertionError("Expected an unsupported version to be rejected")
+    except ValueError as exc:
+        assert "protocol version" in str(exc)
+
+
+def test_mapper_emits_v1_protocol_and_rejects_an_unknown_explicit_version() -> None:
+    mapper = RedpandaEventMapper()
+    event = mapper.from_record({
+        "event_id": "evt-1", "event_type": "inventory.stock_changed",
+        "entity_id": "sku-42", "entity_type": "inventory_item",
+        "occurred_at": "2024-02-01T10:15:00+00:00",
+    })
+
+    assert mapper.to_record(event)["protocol_version"] == 1
+
+    try:
+        mapper.from_record({
+            "protocol_version": 2,
+            "event_id": "evt-2", "event_type": "inventory.stock_changed",
+            "entity_id": "sku-42", "entity_type": "inventory_item",
+            "occurred_at": "2024-02-01T10:15:00+00:00",
+        })
+        raise AssertionError("Expected an unsupported version to be rejected")
+    except ValueError as exc:
+        assert "protocol version" in str(exc)

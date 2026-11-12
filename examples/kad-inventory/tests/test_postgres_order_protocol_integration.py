@@ -11,7 +11,7 @@ import pytest
 
 from kad_inventory import (
     InMemoryInventoryState, InventoryReallocationCommandHandler,
-    OrderInventoryCoordinator, PostgresOrderProcessStore,
+    OrderInventoryCoordinator, PostgresInventoryCommandInbox, PostgresOrderProcessStore,
 )
 from kad_inventory.contracts import KafkaMessage, MessageMetadata, MoveOrderIntent
 from kad_inventory.order_protocol import OrderProcessSnapshot
@@ -92,3 +92,30 @@ def test_postgres_outbox_lease_is_claimed_by_only_one_of_two_publishers() -> Non
     finally:
         first.outbox.drop(first.engine)
         first.processes.drop(first.engine)
+
+
+def test_postgres_inventory_inbox_survives_reconstruction_and_claims_once() -> None:
+    table = f"kad_inventory_inbox_{uuid.uuid4().hex[:16]}"
+    first = PostgresInventoryCommandInbox(DATABASE_URL, table_name=table)
+    command = KafkaMessage(
+        event_type="InventoryReallocationRequested",
+        entity_id="ORD-INBOX",
+        payload={"order_id": "ORD-INBOX", "sku": "SKU-INBOX", "target_warehouse": "WH-B", "quantity": 1, "expected_state_version": 1},
+        metadata=MessageMetadata(
+            correlation_id="order:ORD-INBOX", causation_id="order-submitted:ORD-INBOX",
+            operation_id="ORD-INBOX:inventory-reallocation", attempt_id="ORD-INBOX:inventory-reallocation:attempt-1",
+        ),
+    )
+    try:
+        assert first.accept(command) == "ACCEPTED"
+        # A second process sees the exact durable identity and cannot create a
+        # second command merely because the gRPC client reconnects.
+        restarted = PostgresInventoryCommandInbox(DATABASE_URL, table_name=table)
+        assert restarted.accept(command) == "DUPLICATE"
+        claimed = restarted.claim_pending("inventory-worker")
+        assert claimed == [command]
+        assert first.claim_pending("another-worker") == []
+        restarted.mark_completed(command, worker_id="inventory-worker")
+        assert first.claim_pending("third-worker") == []
+    finally:
+        first.commands.drop(first.engine)

@@ -6,6 +6,7 @@ __pycache__/
 .local/
 venv/
 build/
+sdk-java/target/
 .pytest_cache/
 .mypy_cache/
 .coverage

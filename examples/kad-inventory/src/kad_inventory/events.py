@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .contracts import OperationalEvent
@@ -26,16 +27,57 @@ class EventPublisher(Protocol):
     ) -> None: ...
 
 
-class KafkaEventPublisher:
-    """Synchronous Kafka-compatible publisher used by the reference runtime."""
+@dataclass(frozen=True)
+class PublishRequest:
+    """One broker record awaiting durable Kafka acknowledgement."""
 
-    def __init__(self, bootstrap_servers: str, *, topic: str = INVENTORY_EVENTS_TOPIC) -> None:
+    event: OperationalEvent
+    topic: str
+    key: str
+
+
+class BatchEventPublisher(EventPublisher, Protocol):
+    """Optional high-throughput extension to the small publisher port.
+
+    ``publish_batch`` returns only after Kafka has accepted every record in the
+    batch.  That lets an outbox mark records published only after broker
+    acknowledgement, without imposing a Kafka dependency on domain code.
+    """
+
+    def publish_batch(self, requests: list[PublishRequest]) -> None: ...
+
+
+class KafkaEventPublisher:
+    """Kafka publisher with broker-acknowledged batches.
+
+    Calls do not wait for a domain result. They only wait until Kafka accepts
+    the outbound command/result records. ``linger.ms`` allows Kafka to batch
+    records arriving close together; ``publish_batch`` amortizes the broker
+    flush across an Order outbox claim.
+    """
+
+    def __init__(
+        self,
+        bootstrap_servers: str,
+        *,
+        topic: str = INVENTORY_EVENTS_TOPIC,
+        linger_ms: int = 5,
+        batch_num_messages: int = 1_000,
+    ) -> None:
         try:
             from confluent_kafka import Producer
         except ImportError as exc:  # pragma: no cover - deployment dependency
             raise RuntimeError("confluent-kafka is required for KafkaEventPublisher") from exc
+        if linger_ms < 0 or batch_num_messages < 1:
+            raise ValueError("linger_ms must be non-negative and batch_num_messages must be positive")
         self._topic = topic
-        self._producer = Producer({"bootstrap.servers": bootstrap_servers})
+        self._producer = Producer({
+            "bootstrap.servers": bootstrap_servers,
+            "linger.ms": linger_ms,
+            "batch.num.messages": batch_num_messages,
+            # Retries sent by the producer retain ordering per Kafka key.
+            "enable.idempotence": True,
+        })
 
     def publish(
         self,
@@ -44,14 +86,31 @@ class KafkaEventPublisher:
         topic: str | None = None,
         key: str | None = None,
     ) -> None:
-        self._producer.produce(
-            topic or self._topic,
-            key=key.encode("utf-8") if key is not None else None,
-            value=json.dumps(event, sort_keys=True).encode("utf-8"),
-        )
+        self.publish_batch([PublishRequest(event, topic or self._topic, key or "")])
+
+    def publish_batch(self, requests: list[PublishRequest]) -> None:
+        """Publish a batch and return only after every record is acknowledged."""
+        if not requests:
+            return
+        failures: list[str] = []
+
+        def delivered(error: Any, _message: Any) -> None:
+            if error is not None:
+                failures.append(str(error))
+
+        for request in requests:
+            if not request.topic:
+                raise ValueError("Kafka topic must not be empty")
+            self._producer.produce(
+                request.topic,
+                key=request.key.encode("utf-8") if request.key else None,
+                value=json.dumps(request.event, sort_keys=True).encode("utf-8"),
+                on_delivery=delivered,
+            )
         outstanding = self._producer.flush(5)
-        if outstanding:
-            raise RuntimeError(f"Kafka publish left {outstanding} event(s) undelivered")
+        if outstanding or failures:
+            detail = failures[0] if failures else f"{outstanding} event(s) undelivered"
+            raise RuntimeError(f"Kafka batch publish failed: {detail}")
 
 
 class KafkaProjectionConsumer:
@@ -140,4 +199,27 @@ class KafkaInventoryCommandConsumer(KafkaProjectionConsumer):
             handle_command,
             group_id=group_id,
             topic=INVENTORY_COMMANDS_TOPIC,
+        )
+
+
+class KafkaOrderResultConsumer(KafkaProjectionConsumer):
+    """Consume Inventory results into Order's durable process store.
+
+    Run this in the Order service consumer group. Kafka can distribute result
+    partitions among many Order worker instances; each handler records only
+    the process identified by the message's correlation and operation IDs.
+    """
+
+    def __init__(
+        self,
+        bootstrap_servers: str,
+        apply_result: Callable[[OperationalEvent], None],
+        *,
+        group_id: str = "dev-order-result-handler",
+    ) -> None:
+        super().__init__(
+            bootstrap_servers,
+            apply_result,
+            group_id=group_id,
+            topic=ORDER_RESULTS_TOPIC,
         )

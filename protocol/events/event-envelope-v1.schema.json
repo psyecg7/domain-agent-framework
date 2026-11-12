@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domain-agent-framework.dev/protocol/events/event-envelope-v1.schema.json",
+  "title": "Domain Agent Event Envelope v1",
+  "description": "A broker record with reserved envelope fields and domain-owned top-level payload fields.",
+  "type": "object",
+  "required": ["protocol_version", "event_id", "event_type", "entity_id", "entity_type", "occurred_at"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "minLength": 1},
+    "entity_id": {"type": "string", "minLength": 1},
+    "entity_type": {"type": "string", "minLength": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "source": {"type": "string", "minLength": 1},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "correlation_id": {"type": "string", "minLength": 1},
+        "causation_id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

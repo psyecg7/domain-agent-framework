@@ -22,7 +22,7 @@ from .contracts import (
     GuardedCommand, InventoryReallocated, KafkaMessage, MessageMetadata,
     MoveOrderIntent, ReallocationFailed,
 )
-from .events import EventPublisher, INVENTORY_COMMANDS_TOPIC, ORDER_RESULTS_TOPIC
+from .events import EventPublisher, INVENTORY_COMMANDS_TOPIC, ORDER_RESULTS_TOPIC, PublishRequest
 from .state import InMemoryInventoryState, InvariantViolationError
 
 
@@ -364,6 +364,34 @@ class OrderInventoryCoordinator:
         self.publisher = publisher
 
     def submit(self, intent: MoveOrderIntent) -> OrderProcessSnapshot:
+        """Persist and publish one command; it never waits for Inventory."""
+        return self.submit_many([intent])[0]
+
+    def submit_many(self, intents: list[MoveOrderIntent], *, worker_id: str = "kad-order-outbox") -> list[OrderProcessSnapshot]:
+        """Accept many Orders before publishing one broker-acknowledged batch.
+
+        An Order process is persisted before its request joins the outbox. The
+        method returns while all processes are still ``PENDING_INVENTORY``;
+        later result records advance them independently. This is the scalable
+        command/result shape, not a blocking request/reply loop.
+        """
+        correlation_ids = self.persist_many(intents)
+        # Bound an individual broker batch, but drain this submission's outbox
+        # before returning. No Inventory result is awaited here.
+        while self.dispatch_pending(worker_id=worker_id):
+            pass
+        return [self.store.load(correlation_id) for correlation_id in correlation_ids]
+
+    def persist_many(self, intents: list[MoveOrderIntent]) -> list[str]:
+        """Persist command intent without selecting a command transport.
+
+        Use this with ``GrpcOrderCommandDispatcher`` when gRPC is the command
+        ingress. The normal ``submit_many`` convenience method uses the Kafka
+        reference transport for backward-compatible event-path demonstrations.
+        """
+        return [self._persist_submission(intent) for intent in intents]
+
+    def _persist_submission(self, intent: MoveOrderIntent) -> str:
         correlation_id = f"order:{intent.order_id}"
         operation_id = f"{intent.order_id}:inventory-reallocation"
         attempt_id = f"{operation_id}:attempt-1"
@@ -387,27 +415,36 @@ class OrderInventoryCoordinator:
             status="PENDING_INVENTORY",
             applied_event_ids=(),
         )
-        if self.store.create(snapshot, request):
-            self.dispatch_pending()
-        return self.store.load(correlation_id)
+        self.store.create(snapshot, request)
+        return correlation_id
 
-    def dispatch_pending(self, *, worker_id: str = "kad-order-outbox") -> int:
+    def dispatch_pending(self, *, worker_id: str = "kad-order-outbox", limit: int = 100) -> int:
         """Retry only publication of already-persisted requests after a crash."""
-        count = 0
-        for request in self.store.claim_pending(worker_id):
-            payload = MoveOrderIntent.model_validate(request.payload)
-            try:
-                self.publisher.publish(
-                    request.model_dump(),
-                    topic=INVENTORY_COMMANDS_TOPIC,
-                    key=f"{payload.sku}|{payload.target_warehouse}",
-                )
-            except Exception:
+        pending = self.store.claim_pending(worker_id, limit=limit)
+        if not pending:
+            return 0
+        requests = [
+            PublishRequest(
+                request.model_dump(),
+                INVENTORY_COMMANDS_TOPIC,
+                f"{(payload := MoveOrderIntent.model_validate(request.payload)).sku}|{payload.target_warehouse}",
+            )
+            for request in pending
+        ]
+        batch_publish = getattr(self.publisher, "publish_batch", None)
+        try:
+            if callable(batch_publish):
+                batch_publish(requests)
+            else:
+                for request in requests:
+                    self.publisher.publish(request.event, topic=request.topic, key=request.key)
+        except Exception:
+            for request in pending:
                 self.store.release_pending(request.event_id, worker_id=worker_id)
-                raise
+            raise
+        for request in pending:
             self.store.mark_published(request.event_id, worker_id=worker_id)
-            count += 1
-        return count
+        return len(pending)
 
     def observe_inventory_result(self, record: dict) -> bool:
         return self.store.apply_result(KafkaMessage.model_validate(record))

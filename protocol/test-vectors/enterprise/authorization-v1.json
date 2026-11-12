@@ -1,0 +1,55 @@
+{
+  "protocol": "enterprise-authorization-v1",
+  "verification_now": 1700000010,
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=\n-----END PUBLIC KEY-----\n",
+  "canonical_claims_utf8": "{\"action_id\":\"act-0001\",\"action_type\":\"RESERVE_INVENTORY\",\"audience\":\"example-executor\",\"authorization_id\":\"auth-0001\",\"decision_id\":\"dec-0001\",\"entity_id\":\"order-123\",\"entity_type\":\"order\",\"expires_at\":1700000030,\"idempotency_key\":\"order:123:reserve\",\"issued_at\":1700000000,\"issuer\":\"example-policy\",\"key_id\":\"vector-key-1\",\"parameters_sha256\":\"e512f16d3027633b1935c2071512afe5a6b953c1050e0887fddf69fda76ff9fd\",\"preconditions_sha256\":\"65eafb54830d20eb27ff3ca43eb236f1877fef0a7471864cba4be8ab04f54abe\",\"version\":1}",
+  "command": {
+    "action_id": "act-0001",
+    "decision_id": "dec-0001",
+    "action_type": "RESERVE_INVENTORY",
+    "entity_id": "order-123",
+    "entity_type": "order",
+    "parameters": {"product_id": "SKU-1", "quantity": 2},
+    "preconditions": {"inventory_version": 7, "available": 2},
+    "parameters_sha256": "e512f16d3027633b1935c2071512afe5a6b953c1050e0887fddf69fda76ff9fd",
+    "preconditions_sha256": "65eafb54830d20eb27ff3ca43eb236f1877fef0a7471864cba4be8ab04f54abe",
+    "idempotency_key": "order:123:reserve"
+  },
+  "authorization": {
+    "claims": {
+      "version": 1,
+      "authorization_id": "auth-0001",
+      "issuer": "example-policy",
+      "key_id": "vector-key-1",
+      "audience": "example-executor",
+      "issued_at": 1700000000,
+      "expires_at": 1700000030,
+      "action_id": "act-0001",
+      "decision_id": "dec-0001",
+      "action_type": "RESERVE_INVENTORY",
+      "entity_id": "order-123",
+      "entity_type": "order",
+      "parameters_sha256": "e512f16d3027633b1935c2071512afe5a6b953c1050e0887fddf69fda76ff9fd",
+      "preconditions_sha256": "65eafb54830d20eb27ff3ca43eb236f1877fef0a7471864cba4be8ab04f54abe",
+      "idempotency_key": "order:123:reserve"
+    },
+    "signature": "3ycHMF-LW1sHBoV6I4RzTTf3MHWaxKUfiVneL4ep_ExUO9AJbPydytkhSkxg9tBErRVeSPEtgPdywjN77ZOkCA=="
+  },
+  "tampered_command": {
+    "action_id": "act-0001",
+    "decision_id": "dec-0001",
+    "action_type": "RESERVE_INVENTORY",
+    "entity_id": "order-123",
+    "entity_type": "order",
+    "parameters": {"product_id": "SKU-1", "quantity": 3},
+    "preconditions": {"inventory_version": 7, "available": 2},
+    "parameters_sha256": "e512f16d3027633b1935c2071512afe5a6b953c1050e0887fddf69fda76ff9fd",
+    "preconditions_sha256": "65eafb54830d20eb27ff3ca43eb236f1877fef0a7471864cba4be8ab04f54abe",
+    "idempotency_key": "order:123:reserve"
+  },
+  "expected": {
+    "valid": "accepted",
+    "tampered_command": "Authorization does not bind this execution command",
+    "expired_at": 1700000040
+  }
+}

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package domainagent.kad.inventory.v1;
+
+option java_multiple_files = true;
+option java_package = "dev.domainagent.sdk.grpc";
+
+// A streaming command-ingress contract. It acknowledges durable acceptance;
+// it does not turn a domain result into a synchronous RPC response.
+service InventoryCommandGateway {
+  rpc Submit(stream InventoryCommand) returns (stream CommandAcknowledgement);
+}
+
+message InventoryCommand {
+  uint32 protocol_version = 1;
+  string event_id = 2;
+  string correlation_id = 3;
+  string causation_id = 4;
+  string operation_id = 5;
+  string attempt_id = 6;
+  string order_id = 7;
+  string sku = 8;
+  string target_warehouse = 9;
+  int64 quantity = 10;
+  int64 expected_state_version = 11;
+}
+
+message CommandAcknowledgement {
+  uint32 protocol_version = 1;
+  string event_id = 2;
+  string operation_id = 3;
+  string attempt_id = 4;
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    ACCEPTED = 1;
+    DUPLICATE = 2;
+    REJECTED = 3;
+  }
+  Status status = 5;
+  string detail = 6;
+}

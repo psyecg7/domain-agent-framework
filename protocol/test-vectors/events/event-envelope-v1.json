@@ -1,0 +1,18 @@
+{
+  "protocol": "event-envelope-v1",
+  "record": {
+    "protocol_version": 1,
+    "event_id": "evt-0001",
+    "event_type": "inventory.stock_changed",
+    "entity_id": "SKU-1",
+    "entity_type": "inventory_item",
+    "occurred_at": "2025-01-02T03:04:05+00:00",
+    "source": "inventory-service",
+    "idempotency_key": "stock:SKU-1:change-17",
+    "metadata": {
+      "correlation_id": "corr-0001",
+      "causation_id": "cause-0001"
+    },
+    "available_quantity": 7
+  }
+}
