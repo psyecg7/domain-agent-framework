@@ -75,6 +75,7 @@ exists:
 | That AI needs related notes/documents | `memory-lancedb` |
 | Policy and execution run in different trust domains | `enterprise` |
 | Services in different languages must interoperate | [`protocol`](protocol/README.md) |
+| A Java service needs reusable protocol, Kafka, PostgreSQL, and authorization helpers | [`sdk-java`](sdk-java/README.md) |
 
 LanceDB is only the fourth optional row. It searches notes and documents for an
 AI reasoner. It never holds current stock, order status, payment results, or
@@ -161,6 +162,12 @@ applications, or adapter-only domain code.
 set of versioned JSON schemas and test vectors, not Python runtime code. Use it
 when a service in another language must produce or consume framework events, or
 verify an Enterprise authorization.
+
+[`sdk-java`](sdk-java/README.md) is the first language-specific implementation
+of those portable mechanics. It is not a Java rewrite of `agent-core`; Java
+services retain their own domain policy and state, while the SDK supplies the
+event codec, Kafka dispatch boundary, PostgreSQL operation/outbox helper, and
+Enterprise authorization verifier.
 
 To adopt those checks in a side-effecting domain, start from the
 [conformance template](conformance/templates/side_effect_conformance.py)

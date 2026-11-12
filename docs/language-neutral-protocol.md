@@ -82,3 +82,28 @@ generic workflow on all services.
 Protocol versions are independent of Python package versions. See the short
 [compatibility policy](../protocol/compatibility.md) before changing a wire
 field or signing rule.
+
+## Java implementation
+
+[`sdk-java`](../sdk-java/README.md) is the reference implementation for a Java
+service. It provides an event-envelope codec, Kafka publish/dispatch with
+commit-after-success behavior, PostgreSQL operation/outbox and replay helpers,
+and Enterprise Ed25519 verification. It reads the same protocol vector files
+as the Python tests. It does not provide a generic Java `Agent` class: the
+Java service owns its own local policy and domain state.
+
+## High-throughput command ingress
+
+The [KAD Inventory command contract](../protocol/kad/inventory-command-v1.proto)
+is a Protobuf/gRPC bidirectional-stream example. It is deliberately distinct
+from a Kafka event: a client sends many commands on one long-lived stream and
+receives `ACCEPTED`, `DUPLICATE`, or `REJECTED` for each frame. `ACCEPTED` only
+confirms that the target domain persisted command acceptance; execution still
+ends in an asynchronous, domain-owned result event. This avoids treating Kafka
+as synchronous request/reply while keeping command ingress portable across
+Python, Java, Go, and other Protobuf-supported languages.
+
+Both the Python KAD reference and [`sdk-java`](../sdk-java/README.md) generate
+their gRPC bindings from this one `.proto` file. The Java SDK supplies
+`GrpcInventoryCommandClient`, `GrpcInventoryCommandGateway`, and
+`PostgresInventoryCommandInbox`; no Java-only copy of the contract exists.

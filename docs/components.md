@@ -42,6 +42,7 @@ that the resulting action came through that policy path.
 | Separate Policy and Executor services must distrust each other | [`enterprise`](../enterprise/README.md) | Signed authorizations, replay/revocation stores, OIDC, mTLS, and enterprise reference infrastructure. |
 | Verify domain safety patterns in CI | [`conformance`](../conformance/README.md) | Reusable assertions for idempotency, lineage, reconciliation, outboxes, and unresolved external effects. It is test-only. |
 | Exchange framework messages with a non-Python service | [`protocol`](../protocol/README.md) | Versioned JSON schemas, signing rules, and interoperability test vectors. It is not a runtime package. |
+| Build a Java service without rewriting Kafka/PostgreSQL/authorization plumbing | [`sdk-java`](../sdk-java/README.md) | Java protocol codec, safe Kafka dispatcher, PostgreSQL atomic operation/outbox helper, and Enterprise verifier. Domain policy remains Java application code. |
 
 ## LanceDB: optional context, never business truth
 

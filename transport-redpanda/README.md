@@ -34,7 +34,7 @@ into a domain result.
 ## Language-neutral event envelope
 
 New records emitted by `RedpandaEventMapper` include `protocol_version: 1`.
-The versioned schema and a fixed round-trip vector live in
+The versioned schema and a fixed semantic encode/decode vector live in
 [`protocol/events`](../protocol/events/event-envelope-v1.schema.json). A Go,
 Java, or TypeScript producer can emit the same record without using this Python
 package. The mapper accepts the legacy versionless shape during migration but

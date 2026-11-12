@@ -21,6 +21,10 @@ developer checkout can hide.
 [`protocol`](../protocol/README.md) is not a Python distribution. Its event and
 Enterprise authorization versions have their own compatibility rules and test
 vectors; see [Use the framework from another language](language-neutral-protocol.md).
+[`sdk-java`](../sdk-java/README.md) is a Java 17/Maven implementation of
+protocol v1. Its dedicated CI job compiles it and runs the shared vectors; a
+real Kafka/PostgreSQL integration environment is still required before a Java
+deployment claims broker or database behavior.
 
 ## Versioning rules
 

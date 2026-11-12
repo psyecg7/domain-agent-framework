@@ -6,6 +6,7 @@ from kad_inventory import (
 )
 from kad_inventory.contracts import MoveOrderIntent
 from kad_inventory.events import INVENTORY_COMMANDS_TOPIC, ORDER_RESULTS_TOPIC
+from kad_inventory.events import PublishRequest
 
 
 class InMemoryTopicPublisher:
@@ -14,6 +15,19 @@ class InMemoryTopicPublisher:
 
     def publish(self, event: dict, *, topic: str | None = None, key: str | None = None) -> None:
         self.messages.append({"topic": topic, "key": key, "event": event})
+
+
+class BatchInMemoryTopicPublisher(InMemoryTopicPublisher):
+    """Records one broker-acknowledged batch without pretending it has results."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.batch_sizes: list[int] = []
+
+    def publish_batch(self, requests: list[PublishRequest]) -> None:
+        self.batch_sizes.append(len(requests))
+        for request in requests:
+            self.publish(request.event, topic=request.topic, key=request.key)
 
 
 def test_interleaved_orders_are_correlated_after_result_delivery_in_reverse_order(tmp_path) -> None:
@@ -113,3 +127,34 @@ def test_duplicate_order_submission_publishes_only_one_stable_inventory_request(
     assert duplicate == first
     requests = [message for message in publisher.messages if message["topic"] == INVENTORY_COMMANDS_TOPIC]
     assert len(requests) == 1
+
+
+def test_many_orders_are_persisted_and_published_asynchronously_in_one_batch(tmp_path) -> None:
+    """No request waits for an Inventory result or shares an in-memory reply map."""
+    state = InMemoryInventoryState()
+    publisher = BatchInMemoryTopicPublisher()
+    coordinator = OrderInventoryCoordinator(SqliteOrderProcessStore(tmp_path / "orders.sqlite"), publisher)
+    inventory = InventoryReallocationCommandHandler(state, publisher)
+    intents = []
+    for number in range(200):
+        sku = f"SKU-{number}"
+        state.seed(sku, "WH-B", available_quantity=1)
+        intents.append(MoveOrderIntent(
+            order_id=f"ORD-{number}", sku=sku, target_warehouse="WH-B", quantity=1, expected_state_version=1,
+        ))
+
+    pending = coordinator.submit_many(intents)
+
+    assert publisher.batch_sizes == [100, 100]
+    assert all(process.status == "PENDING_INVENTORY" for process in pending)
+    commands = [message["event"] for message in publisher.messages if message["topic"] == INVENTORY_COMMANDS_TOPIC]
+    assert len(commands) == 200
+
+    # The Inventory fleet may complete different Kafka partitions in any order.
+    for command in reversed(commands):
+        inventory.handle(command)
+    results = [message["event"] for message in publisher.messages if message["topic"] == ORDER_RESULTS_TOPIC]
+    assert len(results) == 200
+    for result in reversed(results):
+        assert coordinator.observe_inventory_result(result) is True
+    assert all(coordinator.store.load(process.correlation_id).status == "SUCCEEDED" for process in pending)
